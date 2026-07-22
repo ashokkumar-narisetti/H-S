@@ -5,10 +5,14 @@ import CartDrawer from './components/CartDrawer';
 import Home from './pages/Home';
 import CategoryPage from './pages/CategoryPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import AccountProfile from './pages/AccountProfile';
+import WalletPage from './pages/WalletPage';
+import HelpPage from './pages/HelpPage';
+import TermsPage from './pages/TermsPage';
+import TrackOrderPage from './pages/TrackOrderPage';
 import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
-import AccountProfile from './pages/AccountProfile';
 
 function App() {
   return (
@@ -27,7 +31,12 @@ function App() {
             <Route path="/login" element={<AuthPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/account" element={<AccountProfile />} />
+            <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/track-orders" element={<TrackOrderPage />} />
           </Routes>
+
         </main>
         
         <Footer />

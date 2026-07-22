@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShoppingBag, Heart, Ruler, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Heart, Ruler, ChevronRight, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { products } from '../data/products';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
@@ -13,6 +14,7 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
+  const [showRelated, setShowRelated] = useState(false);
 
   const addToCart = useCartStore(state => state.addToCart);
   const { wishlistItems, toggleWishlist } = useWishlistStore();
@@ -25,6 +27,7 @@ export default function ProductDetailPage() {
       setSelectedImage(0);
       setQuantity(1);
       setIsAdded(false);
+      setShowRelated(false);
     }
   }, [product]);
 
@@ -85,12 +88,6 @@ export default function ProductDetailPage() {
               alt={product.name} 
               className="w-full h-full object-cover"
             />
-            <button 
-              onClick={() => toggleWishlist(product)}
-              className="absolute top-4 right-4 p-3 bg-white/80 backdrop-blur rounded-full hover:bg-white transition-colors z-10"
-            >
-              <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-black' : ''}`} />
-            </button>
           </div>
         </div>
 
@@ -144,6 +141,18 @@ export default function ProductDetailPage() {
               <ShoppingBag className="w-5 h-5" />
               {isAdded ? 'Added to Cart' : 'Add to Cart'}
             </button>
+
+            <button 
+              onClick={() => toggleWishlist(product)}
+              className={`w-14 flex items-center justify-center border-2 transition-colors ${
+                isWishlisted
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'border-border bg-background text-foreground hover:border-foreground'
+              }`}
+              title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+            >
+              <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
+            </button>
           </div>
 
           {/* Description */}
@@ -160,26 +169,60 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Related Products */}
+      {/* Explore More Button */}
       {relatedProducts.length > 0 && (
-        <div className="mt-32 border-t border-border pt-16">
-          <h2 className="font-heading text-3xl font-bold uppercase tracking-tight mb-10 text-center">You May Also Like</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedProducts.map(p => (
-              <div key={p.id}>
-                {/* For simplicity we'll just link to the product, a full ProductCard would be ideal */}
-                <Link to={`/product/${p.id}`} className="group block">
-                  <div className="aspect-[3/4] bg-muted overflow-hidden mb-4 relative">
-                    <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  </div>
-                  <h3 className="font-bold text-sm uppercase tracking-tight group-hover:underline">{p.name}</h3>
-                  <p className="text-muted-foreground text-sm">${p.price.toFixed(2)}</p>
-                </Link>
-              </div>
-            ))}
-          </div>
+        <div className="mt-20 flex flex-col items-center">
+          <button 
+            onClick={() => setShowRelated(!showRelated)}
+            className="group flex flex-col items-center gap-3 hover:text-muted-foreground transition-colors"
+          >
+            <span className="font-heading font-bold uppercase tracking-widest text-sm">
+              {showRelated ? 'Show Less' : 'Explore More'}
+            </span>
+            <motion.div
+              animate={{ y: showRelated ? 0 : [0, 5, 0] }}
+              transition={{ 
+                repeat: showRelated ? 0 : Infinity, 
+                duration: 1.5, 
+                ease: "easeInOut" 
+              }}
+              className={`p-3 border rounded-full transition-colors ${showRelated ? 'bg-black text-white border-black' : 'border-black group-hover:border-muted-foreground'}`}
+            >
+              <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${showRelated ? 'rotate-180' : ''}`} />
+            </motion.div>
+          </button>
         </div>
       )}
+
+      {/* Related Products */}
+      <AnimatePresence>
+        {showRelated && relatedProducts.length > 0 && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-16 border-t border-border pt-16">
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-tight mb-10 text-center">You May Also Like</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {relatedProducts.map(p => (
+                  <div key={p.id}>
+                    <Link to={`/product/${p.id}`} className="group block">
+                      <div className="aspect-[3/4] bg-muted overflow-hidden mb-4 relative">
+                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      </div>
+                      <h3 className="font-bold text-sm uppercase tracking-tight group-hover:underline">{p.name}</h3>
+                      <p className="text-muted-foreground text-sm">${p.price.toFixed(2)}</p>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

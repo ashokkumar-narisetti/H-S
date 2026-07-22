@@ -1,5 +1,24 @@
 import { Link } from 'react-router-dom';
-import { Camera, MessageCircle, Globe, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
+
+const InstagramIcon = ({ className }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+);
 
 export default function Footer() {
   return (
@@ -10,18 +29,12 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-1">
             <h3 className="font-heading text-2xl font-bold mb-4 tracking-tighter">H&S</h3>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
-              UNISEX STREETWEAR COLLECTIVE // GEN-Z FASHION STUDIO. 
+              UNISEX STREETWEAR COLLECTIVE  PREMIERE INDIAN STREET FASHION STUDIO.<br />
               Designed for the fearless.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-muted-foreground hover:text-background transition-colors">
-                <Camera className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-background transition-colors">
-                <MessageCircle className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-background transition-colors">
-                <Globe className="w-5 h-5" />
+              <a href="https://instagram.com/your-page" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-background transition-colors">
+                <InstagramIcon className="w-5 h-5" />
               </a>
             </div>
           </div>
@@ -50,7 +63,7 @@ export default function Footer() {
           <div>
             <h4 className="font-heading font-bold mb-4 uppercase tracking-wider text-sm">Join The Collective</h4>
             <p className="text-sm text-muted-foreground mb-4">
-              Subscribe for exclusive drops, early access, and 10% off your first order.
+              Subscribe to our newsletter for exclusive drops and know what's Trending
             </p>
             <form className="flex border border-muted-foreground/30 focus-within:border-background transition-colors">
               <input 
@@ -70,12 +83,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-muted-foreground/20 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} H&S COLLECTIVE. ALL RIGHTS RESERVED.</p>
-          <div className="flex space-x-4 mt-4 md:mt-0">
-            <Link to="/privacy" className="hover:text-background transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-background transition-colors">Terms of Service</Link>
-          </div>
+        <div className=" pt-8 flex justify-center items-center text-xs text-muted-foreground text-center">
+          <p>&copy; 2026 H&S COLLECTIVE. ALL RIGHTS RESERVED.</p>
         </div>
       </div>
     </footer>

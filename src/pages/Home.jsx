@@ -26,31 +26,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <HeroBanner />
 
-      {/* Categories Section */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="flex justify-between items-end mb-10">
-          <h2 className="font-heading text-3xl font-bold uppercase tracking-tight">Shop by Category</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-          {categories.map((cat, idx) => (
-            <Link 
-              key={cat.name} 
-              to={cat.path}
-              className="group relative aspect-square overflow-hidden bg-muted block"
-            >
-              <img 
-                src={cat.image} 
-                alt={cat.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 grayscale hover:grayscale-0"
-              />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-              <h3 className="absolute bottom-4 left-4 text-white font-heading font-bold text-xl uppercase tracking-wider z-10">
-                {cat.name}
-              </h3>
-            </Link>
-          ))}
-        </div>
-      </section>
+      
 
       {/* New Arrivals (Carousel-like layout using flex overflow) */}
       <section className="py-20 bg-muted">
