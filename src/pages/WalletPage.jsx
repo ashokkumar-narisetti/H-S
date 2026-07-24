@@ -1,3 +1,12 @@
+/**
+ * @BACKEND_TEAM - WALLET INTEGRATION:
+ * 
+ * 1. Fetch Balance:
+ *    - On mount, query `GET /api/user/wallet` to retrieve current store credit/balance.
+ * 2. Add Funds:
+ *    - "Add Funds" should open a payment modal (Stripe) to purchase store credit.
+ *    - On success, `POST /api/user/wallet/add` to update the user's balance.
+ */
 export default function WalletPage() {
   return (
     <div className="pt-32 pb-20 max-w-4xl mx-auto px-4 min-h-screen text-center">

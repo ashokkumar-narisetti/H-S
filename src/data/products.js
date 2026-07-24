@@ -1,3 +1,27 @@
+/**
+ * @BACKEND_TEAM - INTEGRATION INSTRUCTIONS:
+ * This file currently serves as a mock database for the MVP.
+ * 
+ * To switch to a real-time production backend:
+ * 1. Remove this file entirely or keep it for fallback testing.
+ * 2. In `src/pages/Home.jsx`, `CategoryPage.jsx`, and `ProductDetailPage.jsx`:
+ *    - Replace `import { products } from '../data/products';` with your API fetch logic.
+ *    - Example: `const { data: products } = useQuery('products', fetchProducts);`
+ * 3. The API should return an array of objects matching this exact schema:
+ *    {
+ *      id: String,
+ *      name: String,
+ *      category: String (tshirts, hoodies, sweatpants, shorts, sweatshirts),
+ *      price: Number,
+ *      images: Array<String> (URLs),
+ *      description: String,
+ *      fit: String,
+ *      sizes: Array<String>,
+ *      colors: Array<String>,
+ *      isNew: Boolean,
+ *      isBestSeller: Boolean
+ *    }
+ */
 export const products = [
   // --- T-SHIRTS (10 Items) ---
   {

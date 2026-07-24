@@ -1,3 +1,15 @@
+/**
+ * @BACKEND_TEAM - AUTHENTICATION INTEGRATION:
+ * 
+ * 1. Login Submission: 
+ *    - Wire up the form to send `POST /api/auth/login` with `{ email, password }`.
+ *    - On success, store the JWT (e.g., in an httpOnly cookie or Zustand store) and fetch the user profile.
+ * 2. Signup Submission:
+ *    - Wire up the form to send `POST /api/auth/register` with `{ firstName, lastName, email, password }`.
+ * 3. Form Validation:
+ *    - Add client-side validation for passwords and backend error handling (e.g., "Email already exists", "Invalid credentials").
+ *    - Use a global Auth store (e.g., `useAuthStore`) to track `isAuthenticated` state across the app.
+ */
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 

@@ -1,3 +1,16 @@
+/**
+ * @BACKEND_TEAM - CHECKOUT & PAYMENTS INTEGRATION:
+ * 
+ * 1. Payment Gateway:
+ *    - Replace the hardcoded credit card inputs with Stripe Elements (or Razorpay/PayPal equivalent).
+ *    - Do NOT pass raw credit card data to our backend. Use Stripe.js to tokenize it first.
+ * 2. Order Creation (`handleSubmit`):
+ *    - Wire up the form to send `POST /api/orders/checkout`.
+ *    - Payload should include: `{ shippingAddress, paymentToken, cartItems }`.
+ *    - The backend should verify stock, calculate totals on the server to prevent client-side tampering, charge the token, and return the `orderId`.
+ * 3. Empty Cart:
+ *    - Only clear the local cart (`clearCart()`) AFTER the backend successfully confirms the order creation.
+ */
 import { useState } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
