@@ -32,9 +32,9 @@ export default function ProductCard({ product }) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Badges */}
-      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 rounded-xl ">
         {product.isNew && (
-          <span className="bg-white text-black text-[10px] font-bold uppercase tracking-widest px-2 py-1">
+          <span className="bg-white text-black text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-xl">
             New
           </span>
         )}
@@ -54,7 +54,7 @@ export default function ProductCard({ product }) {
       </button>
 
       {/* Image Container */}
-      <div className="relative aspect-[3/4] bg-muted overflow-hidden mb-4">
+      <div className="relative aspect-[3/4] bg-muted overflow-hidden mb-4 rounded-xl">
         <img 
           src={product.images[0]} 
           alt={product.name}

@@ -6,12 +6,41 @@ import { products } from '../data/products';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 
+const Accordion = ({ title, children, defaultOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-border py-4">
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="w-full flex justify-between items-center text-sm font-bold uppercase tracking-widest"
+      >
+        {title}
+        <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-4 text-muted-foreground text-sm leading-relaxed prose prose-sm max-w-none">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export default function ProductDetailPage() {
   const { id } = useParams();
   const product = products.find(p => p.id === id);
   
-  const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [showRelated, setShowRelated] = useState(false);
@@ -24,7 +53,7 @@ export default function ProductDetailPage() {
     window.scrollTo(0, 0);
     if (product) {
       setSelectedSize(product.sizes[0]);
-      setSelectedImage(0);
+      setSelectedColor(product.colors?.[0] || 'Default');
       setQuantity(1);
       setIsAdded(false);
       setShowRelated(false);
@@ -41,7 +70,7 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = () => {
-    addToCart(product, selectedSize, quantity);
+    addToCart(product, selectedSize, quantity, selectedColor);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
   };
@@ -51,7 +80,7 @@ export default function ProductDetailPage() {
     .slice(0, 4);
 
   return (
-    <div className="pt-24 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
+    <div className="pt-24 pb-20 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
       
       {/* Breadcrumbs */}
       <nav className="flex text-xs uppercase tracking-widest text-muted-foreground mb-8">
@@ -64,40 +93,56 @@ export default function ProductDetailPage() {
         <span className="text-foreground font-bold">{product.name}</span>
       </nav>
 
-      <div className="flex flex-col md:flex-row gap-12 lg:gap-20">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-10 items-start relative">
         
-        {/* Images */}
-        <div className="w-full md:w-1/2 flex flex-col-reverse lg:flex-row gap-4">
-          {/* Thumbnails */}
-          <div className="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-y-auto lg:w-24 flex-shrink-0 no-scrollbar">
-            {product.images.map((img, idx) => (
-              <button 
-                key={idx}
-                onClick={() => setSelectedImage(idx)}
-                className={`aspect-[3/4] w-20 lg:w-full flex-shrink-0 border-2 transition-colors ${selectedImage === idx ? 'border-foreground' : 'border-transparent hover:border-border'}`}
-              >
-                <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-          
-          {/* Main Image */}
-          <div className="flex-1 bg-muted relative aspect-[3/4]">
-            <img 
-              src={product.images[selectedImage]} 
-              alt={product.name} 
-              className="w-full h-full object-cover"
-            />
+        {/* Cover Photo - Sticky Left */}
+        <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-24 h-fit">
+          <div className="aspect-[3/4] bg-muted w-full overflow-hidden rounded-2xl">
+            <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
           </div>
         </div>
 
-        {/* Details */}
-        <div className="w-full md:w-1/2 flex flex-col">
+        {/* Extra Images - Scrolling Middle */}
+        <div className="lg:col-span-4 w-full">
+          <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-4 snap-x no-scrollbar w-full">
+            {product.images.map((img, idx) => (
+              <div 
+                key={idx} 
+                className={`aspect-[3/4] w-[85vw] sm:w-[60vw] lg:w-full flex-shrink-0 snap-center bg-muted overflow-hidden rounded-2xl ${idx === 0 ? 'lg:hidden' : ''}`}
+              >
+                <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Details - Sticky Right */}
+        <div className="w-full lg:col-span-4 lg:sticky lg:top-24 h-fit flex flex-col pt-4 lg:pt-0">
           {product.isNew && <span className="text-xs font-bold uppercase tracking-widest mb-4">New Arrival</span>}
           <h1 className="font-heading text-4xl md:text-5xl font-bold uppercase tracking-tight leading-none mb-4">
             {product.name}
           </h1>
           <p className="text-2xl mb-8">${product.price.toFixed(2)}</p>
+
+          {/* @BACKEND_TEAM: Colors are currently coming from the mock `product.colors` array. Once the backend is integrated, ensure the API returns an array of color names or objects for the product. */}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Select Color</h3>
+            <div className="flex flex-wrap gap-3">
+              {(product.colors || ['Default Color']).map(color => (
+                <button
+                  key={color}
+                  onClick={() => setSelectedColor(color)}
+                  className={`px-4 py-3 border text-sm font-bold uppercase transition-colors ${
+                    selectedColor === color 
+                      ? 'bg-foreground text-background border-foreground' 
+                      : 'bg-background text-foreground border-border hover:border-foreground'
+                  }`}
+                >
+                  {color}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="mb-8">
             <div className="flex justify-between items-end mb-4">
@@ -155,16 +200,26 @@ export default function ProductDetailPage() {
             </button>
           </div>
 
-          {/* Description */}
-          <div className="prose prose-sm max-w-none mb-10 border-t border-border pt-8">
-            <h4 className="font-heading font-bold uppercase tracking-widest mb-4">Description</h4>
-            <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+          {/* @BACKEND_TEAM: Description, Washcare, and Shipping data should come from the API (e.g. `product.washcare`, `product.shipping_info`). Currently using dummy data for washcare/shipping. */}
+          <div className="mb-10">
+            <Accordion title="Details & Description" defaultOpen={true}>
+              <p>{product.description}</p>
+              <ul className="mt-4 space-y-2 list-disc list-inside">
+                <li>Fit: {product.fit}</li>
+                <li>Material: Premium composition</li>
+              </ul>
+            </Accordion>
             
-            <ul className="mt-6 space-y-2 text-muted-foreground list-disc list-inside">
-              <li>Fit: {product.fit}</li>
-              <li>Material: Premium composition</li>
-              <li>Care: Machine wash cold, dry flat</li>
-            </ul>
+            <Accordion title="Washcare">
+              <p>Machine wash cold with like colors. Tumble dry low or hang dry to preserve the print and fabric quality. Do not iron directly on the graphic.</p>
+            </Accordion>
+
+            <Accordion title="Shipping">
+              <p>Packed within 24 hours.</p>
+              <p>Free delivery pan-India.</p>
+              <p>Dispatches next day.</p>
+            </Accordion>
+            <div className="border-t border-border"></div>
           </div>
         </div>
       </div>

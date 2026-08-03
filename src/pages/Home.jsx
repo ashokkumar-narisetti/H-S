@@ -30,8 +30,8 @@ export default function Home() {
 
       {/* New Arrivals (Carousel-like layout using flex overflow) */}
       <section className="py-20 bg-muted">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="flex justify-between items-end mb-10">
+        <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 w-full ">
+          <div className="flex justify-between items-end mb-10 ">
             <h2 className="font-heading text-3xl font-bold uppercase tracking-tight">New Arrivals</h2>
             <Link to="/category/new-arrivals" className="text-sm font-bold uppercase tracking-widest hover:underline underline-offset-4 flex items-center gap-2">
               View All <ArrowRight className="w-4 h-4" />
@@ -47,7 +47,7 @@ export default function Home() {
       </section>
 
       {/* Best Sellers Grid */}
-      <section className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <section className="py-24 max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex flex-col items-center mb-16">
           <h2 className="font-heading text-4xl font-bold uppercase tracking-tight mb-4">Trending Now</h2>
           <div className="w-16 h-1 bg-black"></div>
