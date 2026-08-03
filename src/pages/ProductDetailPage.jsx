@@ -282,7 +282,7 @@ export default function ProductDetailPage() {
                 {relatedProducts.map(p => (
                   <div key={p.id}>
                     <Link to={`/product/${p.id}`} className="group block">
-                      <div className="aspect-[3/4] bg-muted overflow-hidden mb-4 relative">
+                      <div className="aspect-[3/4] bg-muted overflow-hidden mb-4 relative rounded-xl">
                         <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       </div>
                       <h3 className="font-bold text-sm uppercase tracking-tight group-hover:underline">{p.name}</h3>

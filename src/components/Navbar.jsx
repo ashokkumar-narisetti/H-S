@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { User, ChevronDown } from 'lucide-react';
+import { User, ChevronDown, Home } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -54,7 +54,7 @@ export default function Navbar() {
     { name: 'Wishlist', path: '/wishlist' },
     { name: 'Bag', path: '/checkout' }, // Using checkout as cart/bag view since Cart Drawer icon is removed
     { name: 'Order History & Track', path: '/track-orders' },
-    { name: 'Wallet', path: '/wallet' },
+    // { name: 'Wallet', path: '/wallet' },
     { name: 'Help', path: '/help' },
     { name: 'Terms & Conditions', path: '/terms' },
     { name: 'Logout', path: '/' } // Redirects to home for mock logout
@@ -114,7 +114,15 @@ export default function Navbar() {
           </div>
 
           {/* Right: Profile Dropdown */}
-          <div className="flex-1 flex justify-end" ref={profileRef}>
+          <div className="flex-1 flex justify-end items-center gap-2" ref={profileRef}>
+            <Link 
+              to="/" 
+              className="p-2 hover:bg-muted rounded-full transition-colors flex items-center justify-center" 
+              aria-label="Home"
+            >
+              <Home className="w-5 h-5" />
+            </Link>
+            
             <div className="relative">
               <button 
                 className="p-2 hover:bg-muted rounded-full transition-colors flex items-center justify-center"

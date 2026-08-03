@@ -54,7 +54,7 @@ export default function ProductCard({ product }) {
       </button>
 
       {/* Image Container */}
-      <div className="relative aspect-[3/4] bg-muted overflow-hidden mb-4 rounded-xl">
+      <div className="relative aspect-[3/4] bg-muted overflow-hidden mb-4 rounded-3xl">
         <img 
           src={product.images[0]} 
           alt={product.name}
