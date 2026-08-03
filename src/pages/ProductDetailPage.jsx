@@ -44,6 +44,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [showRelated, setShowRelated] = useState(false);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
 
   const addToCart = useCartStore(state => state.addToCart);
   const { wishlistItems, toggleWishlist } = useWishlistStore();
@@ -124,30 +125,42 @@ export default function ProductDetailPage() {
           </h1>
           <p className="text-2xl mb-8">${product.price.toFixed(2)}</p>
 
-          {/* @BACKEND_TEAM: Colors are currently coming from the mock `product.colors` array. Once the backend is integrated, ensure the API returns an array of color names or objects for the product. */}
+          {/* @BACKEND_TEAM: Colors are currently coming from the mock `product.colors` array. Once the backend is integrated, ensure the API returns an array of color names or objects (e.g. { name: 'Black', hex: '#000000' }) for the product. */}
           <div className="mb-6">
             <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Select Color</h3>
-            <div className="flex flex-wrap gap-3">
-              {(product.colors || ['Default Color']).map(color => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className={`px-4 py-3 border text-sm font-bold uppercase transition-colors ${
-                    selectedColor === color 
-                      ? 'bg-foreground text-background border-foreground' 
-                      : 'bg-background text-foreground border-border hover:border-foreground'
-                  }`}
-                >
-                  {color}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-4">
+              {(product.colors || ['Default Color']).map(color => {
+                const hex = color.toLowerCase().includes('black') ? '#111' 
+                          : color.toLowerCase().includes('white') ? '#eee' 
+                          : color.toLowerCase().includes('grey') || color.toLowerCase().includes('gray') ? '#999'
+                          : color.toLowerCase().includes('olive') ? '#556b2f'
+                          : '#ccc';
+
+                return (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    title={color}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      selectedColor === color 
+                        ? 'border border-foreground' 
+                        : 'border border-transparent'
+                    }`}
+                  >
+                    <div 
+                      className="w-8 h-8 rounded-full shadow-inner border border-black/10"
+                      style={{ backgroundColor: hex }}
+                    />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="mb-8">
             <div className="flex justify-between items-end mb-4">
               <h3 className="text-sm font-bold uppercase tracking-widest">Select Size</h3>
-              <button className="flex items-center gap-1 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => setIsSizeGuideOpen(true)} className="flex items-center gap-1 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                 <Ruler className="w-3 h-3" /> Size Guide
               </button>
             </div>
@@ -200,8 +213,12 @@ export default function ProductDetailPage() {
             </button>
           </div>
 
-          {/* @BACKEND_TEAM: Description, Washcare, and Shipping data should come from the API (e.g. `product.washcare`, `product.shipping_info`). Currently using dummy data for washcare/shipping. */}
+          {/* @BACKEND_TEAM: Description, Washcare, Shipping, and Designer Note data should come from the API (e.g. `product.washcare`, `product.shipping_info`, `product.sizeChartUrl`). Currently using dummy data. */}
           <div className="mb-10">
+            <Accordion title="Designer's Note">
+              <p>Conceived with a focus on structural integrity and silhouette, this piece bridges the gap between utilitarian design and contemporary streetwear. Every seam and stitch has been deliberately placed to enhance both form and longevity.</p>
+            </Accordion>
+            
             <Accordion title="Details & Description" defaultOpen={true}>
               <p>{product.description}</p>
               <ul className="mt-4 space-y-2 list-disc list-inside">
@@ -275,6 +292,37 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Size Guide Modal */}
+      <AnimatePresence>
+        {isSizeGuideOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setIsSizeGuideOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background max-w-2xl w-full p-6 lg:p-10 relative overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setIsSizeGuideOpen(false)}
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground text-sm font-bold uppercase tracking-widest"
+              >
+                Close
+              </button>
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-tight mb-6">Size Guide</h2>
+              {/* @BACKEND_TEAM: The size chart image URL should come from the API (e.g. `product.sizeChartUrl`). */}
+              <div className="w-full bg-muted aspect-video relative flex items-center justify-center border border-border">
+                <img src="https://images.unsplash.com/photo-1620799140188-3b2a02fd9a77?q=80&w=1200&auto=format&fit=crop" alt="Size Chart" className="w-full h-full object-cover opacity-30 mix-blend-multiply" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                   <span className="font-bold uppercase tracking-widest text-lg border-2 border-black px-6 py-3 bg-white">Dummy Size Chart Image</span>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
