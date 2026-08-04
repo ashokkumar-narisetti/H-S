@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { products } from '../data/products';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 const Accordion = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -38,6 +40,8 @@ const Accordion = ({ title, children, defaultOpen = false }) => {
 export default function ProductDetailPage() {
   const { id } = useParams();
   const product = products.find(p => p.id === id);
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -71,6 +75,10 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
     addToCart(product, selectedSize, quantity, selectedColor);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);

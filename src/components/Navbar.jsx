@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { User, ChevronDown, Home } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -11,6 +12,7 @@ export default function Navbar() {
   const productsRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
+  const { isAuthenticated, logout, user } = useAuthStore();
 
   // Handle scroll effect
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function Navbar() {
     // { name: 'Wallet', path: '/wallet' },
     { name: 'Help', path: '/help' },
     { name: 'Terms & Conditions', path: '/terms' },
-    { name: 'Logout', path: '/' } // Redirects to home for mock logout
+    { name: 'Logout', action: () => logout() }
   ];
 
   return (
@@ -142,18 +144,49 @@ export default function Navbar() {
                     className="absolute top-full right-0 mt-4 w-64 bg-white border border-border shadow-2xl py-4 flex flex-col z-50"
                   >
                     <div className="px-6 py-3 border-b border-border/50 mb-2">
-                      <p className="text-xs uppercase tracking-widest text-muted-foreground">My Account</p>
+                      <p className="text-xs uppercase tracking-widest text-muted-foreground">
+                        {isAuthenticated ? `Welcome, ${user?.name || 'User'}` : 'My Account'}
+                      </p>
                     </div>
-                    {profileLinks.map((link) => (
-                      <Link 
-                        key={link.name} 
-                        to={link.path}
-                        onClick={() => link.name === 'Logout' && alert('Logged out successfully!')}
-                        className={`px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-muted hover:text-black transition-colors ${link.name === 'Logout' ? 'text-red-500 hover:text-red-600 border-t border-border/50 mt-2 pt-4' : ''}`}
-                      >
-                        {link.name}
-                      </Link>
-                    ))}
+                    {isAuthenticated ? (
+                      profileLinks.map((link) => (
+                        link.path ? (
+                          <Link 
+                            key={link.name} 
+                            to={link.path}
+                            className="px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-muted hover:text-black transition-colors"
+                          >
+                            {link.name}
+                          </Link>
+                        ) : (
+                          <button
+                            key={link.name}
+                            onClick={() => {
+                              link.action();
+                              setIsProfileOpen(false);
+                            }}
+                            className="px-6 py-3 text-left text-xs font-bold uppercase tracking-widest hover:bg-muted text-red-500 hover:text-red-600 border-t border-border/50 mt-2 pt-4 transition-colors"
+                          >
+                            {link.name}
+                          </button>
+                        )
+                      ))
+                    ) : (
+                      <div className="flex flex-col gap-2 px-4 py-2">
+                        <Link 
+                          to="/login"
+                          className="w-full text-center bg-foreground text-background py-3 text-xs font-bold uppercase tracking-widest hover:bg-black/80 transition-colors"
+                        >
+                          Sign In
+                        </Link>
+                        <Link 
+                          to="/signup"
+                          className="w-full text-center border border-foreground text-foreground py-3 text-xs font-bold uppercase tracking-widest hover:bg-muted transition-colors"
+                        >
+                          Create Account
+                        </Link>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
