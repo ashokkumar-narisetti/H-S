@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
@@ -14,10 +14,12 @@ import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const hideFooter = location.pathname === '/login' || location.pathname === '/signup';
+
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen">
         <Navbar />
         <CartDrawer />
         
@@ -39,8 +41,15 @@ function App() {
 
         </main>
         
-        <Footer />
+        {!hideFooter && <Footer />}
       </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

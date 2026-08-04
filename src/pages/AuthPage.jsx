@@ -16,6 +16,31 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ChevronDown } from 'lucide-react';
 import { useRef } from 'react';
 import { COUNTRIES } from '../data/countries';
+import wallpaper from '../assets/H-S-Wallpaper.png';
+
+function TermsAccordion() {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border border-border mt-4">
+      <button 
+        type="button" 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="w-full p-4 flex justify-between items-center bg-muted/30 text-xs font-bold uppercase tracking-widest hover:bg-muted/50 transition-colors"
+      >
+        Read Terms & Conditions
+        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="p-4 text-xs text-muted-foreground leading-relaxed h-32 overflow-y-auto bg-background border-t border-border">
+          <p>By creating an account, you agree to our terms of service and privacy policy. You confirm that all information provided is accurate and you are at least 18 years of age.</p>
+          <p className="mt-2">1. Your data will be stored securely.</p>
+          <p className="mt-2">2. We will not share your data with third parties.</p>
+          <p className="mt-2">3. You can request account deletion at any time.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CountrySelect({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -84,8 +109,16 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="pt-32 pb-20 max-w-md mx-auto px-4 min-h-screen">
-      <div className="text-center mb-10">
+    <div className="min-h-screen flex bg-background pt-16 lg:pt-0">
+      {/* Left side: Image (hidden on mobile) */}
+      <div className="hidden lg:block lg:w-1/2 relative">
+        <img src={wallpaper} alt="H&S Wallpaper" className="absolute inset-0 w-full h-full object-cover" />
+      </div>
+
+      {/* Right side: Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-20 lg:py-32">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-10">
         <h1 className="font-heading text-4xl font-bold uppercase tracking-tight mb-4">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h1>
@@ -114,18 +147,33 @@ export default function AuthPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <select className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">
-                <option value="" disabled>Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="prefer-not-to-say">Prefer not to say</option>
-              </select>
-              <input required type="date" title="Date of Birth" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground uppercase text-xs tracking-widest text-muted-foreground" />
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Gender</label>
+                <select className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">
+                  <option value="" disabled>Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Date of Birth</label>
+                <input 
+                  required 
+                  type="text" 
+                  placeholder="DD-MM-YYYY"
+                  onFocus={(e) => (e.target.type = "date")}
+                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")}
+                  title="Date of Birth" 
+                  className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground uppercase text-xs tracking-widest text-muted-foreground" 
+                />
+              </div>
             </div>
 
             <input required type="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             <input required type="password" placeholder="Confirm Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
+            <TermsAccordion />
             <label className="flex items-start gap-3 mt-4 cursor-pointer">
               <input required type="checkbox" className="w-5 h-5 accent-foreground mt-0.5" />
               <span className="text-xs uppercase tracking-widest text-muted-foreground leading-relaxed">
@@ -157,6 +205,8 @@ export default function AuthPage() {
             <Link to="/login" className="font-bold border-b border-black pb-1 hover:text-muted-foreground transition-colors">Sign in</Link>
           </p>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );
