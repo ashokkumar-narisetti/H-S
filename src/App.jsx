@@ -13,6 +13,7 @@ import TrackOrderPage from './pages/TrackOrderPage';
 import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
+import AddressPage from './pages/AddressPage';
 
 function AppContent() {
   const location = useLocation();
@@ -33,6 +34,7 @@ function AppContent() {
             <Route path="/login" element={<AuthPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/account" element={<AccountProfile />} />
+            <Route path="/addresses" element={<AddressPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/terms" element={<TermsPage />} />

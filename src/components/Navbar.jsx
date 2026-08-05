@@ -53,6 +53,7 @@ export default function Navbar() {
 
   const profileLinks = [
     { name: 'Profile', path: '/account' },
+    { name: 'Addresses', path: '/addresses' },
     { name: 'Wishlist', path: '/wishlist' },
     { name: 'Bag', path: '/checkout' }, // Using checkout as cart/bag view since Cart Drawer icon is removed
     { name: 'Order History & Track', path: '/track-orders' },
@@ -144,8 +145,8 @@ export default function Navbar() {
                     className="absolute top-full right-0 mt-4 w-64 bg-white border border-border shadow-2xl py-4 flex flex-col z-50"
                   >
                     <div className="px-6 py-3 border-b border-border/50 mb-2">
-                      <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                        {isAuthenticated ? `Welcome, ${user?.name || 'User'}` : 'My Account'}
+                      <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                        {isAuthenticated ? `Welcome, @${user?.username || 'user'}` : 'My Account'}
                       </p>
                     </div>
                     {isAuthenticated ? (

@@ -104,7 +104,7 @@ export default function AuthPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     // @BACKEND_TEAM: Once API returns success and JWT, pass the user object here.
-    login({ name: isLogin ? 'Returning User' : 'New User' });
+    login({ name: isLogin ? 'John Doe' : 'New User', username: 'johndoe99' });
     navigate('/');
   };
 
@@ -160,10 +160,7 @@ export default function AuthPage() {
                 <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Date of Birth</label>
                 <input 
                   required 
-                  type="text" 
-                  placeholder="DD-MM-YYYY"
-                  onFocus={(e) => (e.target.type = "date")}
-                  onBlur={(e) => (e.target.type = e.target.value ? "date" : "text")}
+                  type="date" 
                   title="Date of Birth" 
                   className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground uppercase text-xs tracking-widest text-muted-foreground" 
                 />

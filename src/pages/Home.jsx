@@ -10,18 +10,22 @@ export default function Home() {
 
   /**
    * @BACKEND_TEAM - LATEST DROPS INTEGRATION:
-   * 1. Fetch the 3 most recent active product drops.
+   * 1. Fetch the 5 most recent active product drops.
    * 2. Map the data so each drop has a title and an array of products.
+   * 3. Drops should be ordered LIFO (Last In First Out). For example, if Drop 15 is the latest,
+   *    the response should be ordered: Drop 15, Drop 14, Drop 13, Drop 12, Drop 11.
    * Expected payload structure:
    * [
-   *   { dropId: 1, title: 'Drop 01', products: [ { id: 1, name: '...', ... }, ... ] },
+   *   { dropId: 15, title: 'Drop 15', products: [ { id: 1, name: '...', ... }, ... ] },
    *   ...
    * ]
    */
   const latestDrops = [
-    { id: 1, title: 'Drop 01 / Summer Essentials', products: products.slice(0, 4) },
-    { id: 2, title: 'Drop 02 / Monochrome Edition', products: products.slice(4, 8) },
-    { id: 3, title: 'Drop 03 / The Heavyweights', products: products.slice(8, 12) }
+    { id: 15, title: 'Drop 15 / The Zenith Collection', products: products.slice(0, 4) },
+    { id: 14, title: 'Drop 14 / Urban Utility', products: products.slice(2, 6) },
+    { id: 13, title: 'Drop 13 / Midnight Series', products: products.slice(4, 8) },
+    { id: 12, title: 'Drop 12 / Essential Core', products: products.slice(6, 10) },
+    { id: 11, title: 'Drop 11 / The Origins', products: products.slice(8, 12) }
   ];
 
   const categories = [

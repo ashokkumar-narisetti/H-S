@@ -14,11 +14,16 @@
 import { useState } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
+import { Minus, Plus, Trash2, MapPin } from 'lucide-react';
 
 export default function CheckoutPage() {
-  const { cartItems, clearCart } = useCartStore();
+  const { cartItems, clearCart, updateQuantity, removeFromCart } = useCartStore();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Mock Address State
+  const [hasSavedAddress, setHasSavedAddress] = useState(true);
+  const [isChangingAddress, setIsChangingAddress] = useState(false);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = subtotal > 150 ? 0 : 10;
@@ -51,109 +56,155 @@ export default function CheckoutPage() {
       <h1 className="font-heading text-4xl font-bold uppercase tracking-tight mb-12 border-b border-border pb-6">Secure Checkout</h1>
       
       <div className="flex flex-col lg:flex-row gap-12">
-        {/* Form */}
-        <div className="w-full lg:w-2/3">
-          <form onSubmit={handleSubmit} className="space-y-12">
+        
+        {/* Left Side: Order Summary */}
+        <div className="w-full lg:w-1/2">
+          <h2 className="font-heading text-2xl font-bold uppercase tracking-widest mb-6">Order Summary</h2>
+          
+          <div className="space-y-6 mb-8 max-h-[60vh] overflow-y-auto pr-4 no-scrollbar">
+            {cartItems.map(item => (
+              <div key={`${item.id}-${item.size}`} className="flex gap-6 border-b border-border pb-6">
+                <div className="w-24 h-32 bg-muted relative flex-shrink-0">
+                  <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-bold uppercase tracking-widest text-sm">{item.name}</p>
+                      <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                    <p className="text-muted-foreground uppercase text-xs tracking-widest mb-2">Size: {item.size}</p>
+                    <p className="text-muted-foreground text-xs">${item.price.toFixed(2)} each</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center border border-border">
+                      <button 
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
+                        className="p-2 hover:bg-muted transition-colors"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
+                      <button 
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
+                        className="p-2 hover:bg-muted transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => removeFromCart(item.id, item.size)}
+                      className="text-xs font-bold uppercase tracking-widest text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3 text-sm pt-4 mb-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
+              <span className="font-bold">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>
+              <span className="font-bold">{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+            </div>
+          </div>
+          <div className="flex justify-between border-t border-black pt-4 mb-10">
+            <span className="font-bold uppercase tracking-widest text-lg">Total</span>
+            <span className="font-bold text-2xl">${total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Right Side: Form & Payment */}
+        <div className="w-full lg:w-1/2 bg-muted/20 p-8 border border-border rounded-sm h-fit">
+          <form onSubmit={handleSubmit} className="space-y-10">
             
-            {/* Contact Info */}
+            {/* Delivery Address Section */}
             <section>
-              <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6">Contact Information</h2>
-              <div className="space-y-4">
-                <input required type="email" placeholder="Email Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-                <label className="flex items-center gap-3 text-sm cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 border-border text-foreground accent-foreground" />
-                  Email me with news and offers
-                </label>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="font-heading text-xl font-bold uppercase tracking-widest">Delivery Address</h2>
+                {hasSavedAddress && !isChangingAddress && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsChangingAddress(true)}
+                    className="text-[10px] font-bold uppercase tracking-widest border-b border-black pb-0.5 hover:text-muted-foreground transition-colors"
+                  >
+                    Change Delivery Address
+                  </button>
+                )}
               </div>
+
+              {hasSavedAddress && !isChangingAddress ? (
+                <div className="border border-border p-6 bg-white relative">
+                  <div className="flex items-start gap-4">
+                    <MapPin className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="font-bold uppercase tracking-widest text-sm mb-2">John Doe</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed uppercase tracking-widest">
+                        123 Streetwear Ave, Apt 4B<br />
+                        New York, NY 10001<br />
+                        United States
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 bg-white p-6 border border-border">
+                  <input required type="text" placeholder="First Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                  <input required type="text" placeholder="Last Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                  <input required type="text" placeholder="Street Address" className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
+                  <input type="text" placeholder="Apartment (optional)" className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
+                  <input required type="text" placeholder="City" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                  <input required type="text" placeholder="Postal Code" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                  {isChangingAddress && (
+                    <div className="col-span-2 flex gap-4 mt-2">
+                      <button type="button" onClick={() => setIsChangingAddress(false)} className="text-xs font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted">Cancel</button>
+                      <button type="button" onClick={() => { setHasSavedAddress(true); setIsChangingAddress(false); }} className="text-xs font-bold uppercase tracking-widest bg-black text-white px-4 py-2 hover:bg-black/80">Save & Use</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
-            {/* Shipping */}
-            <section>
-              <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6">Shipping Address</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <input required type="text" placeholder="First Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-                <input required type="text" placeholder="Last Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-                <input required type="text" placeholder="Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground col-span-2" />
-                <input type="text" placeholder="Apartment, suite, etc. (optional)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground col-span-2" />
-                <input required type="text" placeholder="City" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground col-span-2 sm:col-span-1" />
-                <input required type="text" placeholder="Postal Code" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground col-span-2 sm:col-span-1" />
-              </div>
-            </section>
-
-            {/* Payment (Mock) */}
+            {/* Payment Section */}
             <section>
               <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6">Payment</h2>
-              <p className="text-xs text-muted-foreground mb-4 uppercase tracking-widest">All transactions are secure and encrypted.</p>
-              
-              <div className="border border-border p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="border border-border p-6 space-y-4 bg-white">
+                <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
                   <span className="font-bold uppercase text-sm tracking-widest">Credit Card</span>
                   <div className="flex gap-2">
                     <div className="w-8 h-5 bg-muted"></div>
                     <div className="w-8 h-5 bg-muted"></div>
                   </div>
                 </div>
-                <input required type="text" placeholder="Card Number" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+                <input required type="text" placeholder="Card Number" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                 <div className="grid grid-cols-2 gap-4">
-                  <input required type="text" placeholder="Expiration date (MM/YY)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-                  <input required type="text" placeholder="Security code" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+                  <input required type="text" placeholder="MM/YY" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                  <input required type="text" placeholder="CVC" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                 </div>
-                <input required type="text" placeholder="Name on card" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+                <input required type="text" placeholder="Name on Card" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
               </div>
             </section>
 
             <button 
               type="submit" 
               disabled={isProcessing}
-              className="w-full py-5 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-5 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-8"
             >
-              {isProcessing ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+              {isProcessing ? 'Processing...' : `Place Order • $${total.toFixed(2)}`}
             </button>
           </form>
         </div>
 
-        {/* Order Summary */}
-        <div className="w-full lg:w-1/3">
-          <div className="bg-muted/30 p-8 border border-border sticky top-32">
-            <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6 border-b border-border pb-4">Order Summary</h2>
-            
-            <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2 no-scrollbar">
-              {cartItems.map(item => (
-                <div key={`${item.id}-${item.size}`} className="flex gap-4">
-                  <div className="w-16 h-20 bg-muted relative">
-                    <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-foreground text-background text-[10px] flex items-center justify-center rounded-full font-bold">
-                      {item.quantity}
-                    </span>
-                  </div>
-                  <div className="flex-1 text-sm">
-                    <p className="font-bold uppercase truncate">{item.name}</p>
-                    <p className="text-muted-foreground uppercase">{item.size}</p>
-                  </div>
-                  <div className="font-bold text-sm">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 text-sm border-t border-border pt-4 mb-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
-                <span className="font-bold">${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>
-                <span className="font-bold">{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between border-t border-black pt-4">
-              <span className="font-bold uppercase tracking-widest">Total</span>
-              <span className="font-bold text-xl">${total.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
