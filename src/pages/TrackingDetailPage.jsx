@@ -17,22 +17,22 @@ export default function TrackingDetailPage() {
     date: 'October 25, 2023',
     status: 'In Transit', // Active status
     estimatedDelivery: 'Tomorrow by 8:00 PM',
-    shipper: 'FedEx Express',
-    trackingId: 'FX-982374982374',
-    trackingLink: 'https://fedex.com',
+    shipper: 'Blue Dart',
+    trackingId: 'BD-982374982374',
+    trackingLink: 'https://bluedart.com',
     address: {
-      name: 'John Doe',
-      street: '123 Streetwear Ave, Apt 4B',
-      city: 'New York, NY 10001',
-      country: 'United States'
+      name: 'Rahul Sharma',
+      street: '456 Fashion Street, Andheri West',
+      city: 'Mumbai, MH 400053',
+      country: 'India'
     },
     items: [
       { id: 'hd-1', name: 'Oversized Heavyweight Hoodie', size: 'L', qty: 1, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop' }
     ],
     history: [
-      { date: 'Oct 26, 8:45 AM', location: 'New York, NY', status: 'Out for delivery', completed: false, active: true },
-      { date: 'Oct 26, 6:30 AM', location: 'New York, NY', status: 'Arrived at local sorting facility', completed: true, active: false },
-      { date: 'Oct 25, 11:20 PM', location: 'Newark, NJ', status: 'Departed regional hub', completed: true, active: false },
+      { date: 'Oct 26, 8:45 AM', location: 'Mumbai, MH', status: 'Out for delivery', completed: false, active: true },
+      { date: 'Oct 26, 6:30 AM', location: 'Mumbai, MH', status: 'Arrived at local sorting facility', completed: true, active: false },
+      { date: 'Oct 25, 11:20 PM', location: 'Pune, MH', status: 'Departed regional hub', completed: true, active: false },
       { date: 'Oct 25, 4:00 PM', location: 'Warehouse', status: 'Package picked up by carrier', completed: true, active: false },
       { date: 'Oct 25, 2:15 PM', location: 'Warehouse', status: 'Label created, awaiting carrier pickup', completed: true, active: false },
       { date: 'Oct 25, 10:05 AM', location: 'Online', status: 'Order confirmed', completed: true, active: false }
@@ -79,9 +79,10 @@ export default function TrackingDetailPage() {
 
             {/* Horizontal Timeline */}
             <div className="relative mb-12 px-2 sm:px-8">
-              <div className="absolute top-4 left-6 right-6 h-1 bg-border -z-10">
-                <div className="h-full bg-black transition-all duration-1000 w-[66%]"></div>
-              </div>
+              {/* Background dotted line */}
+              <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
+              {/* Active solid line */}
+              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: '66%', marginTop: '-1px' }}></div>
               <div className="flex justify-between relative z-10">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">

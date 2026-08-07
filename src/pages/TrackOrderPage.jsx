@@ -70,7 +70,7 @@ export default function TrackOrderPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
-                  <p className="font-bold">${order.total.toFixed(2)}</p>
+                  <p className="font-bold">₹{order.total.toFixed(2)}</p>
                 </div>
                 <div>
                   <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${

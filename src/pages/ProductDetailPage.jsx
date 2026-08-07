@@ -131,7 +131,7 @@ export default function ProductDetailPage() {
           <h1 className="font-heading text-4xl md:text-5xl font-bold uppercase tracking-tight leading-none mb-4">
             {product.name}
           </h1>
-          <p className="text-2xl mb-8">${product.price.toFixed(2)}</p>
+          <p className="text-2xl mb-8">₹{product.price.toFixed(2)}</p>
 
           {/* @BACKEND_TEAM: Colors are currently coming from the mock `product.colors` array. Once the backend is integrated, ensure the API returns an array of color names or objects (e.g. { name: 'Black', hex: '#000000' }) for the product. */}
           <div className="mb-6">
