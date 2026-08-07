@@ -14,6 +14,7 @@ import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 import AddressPage from './pages/AddressPage';
+import TrackingDetailPage from './pages/TrackingDetailPage';
 
 function AppContent() {
   const location = useLocation();
@@ -39,6 +40,7 @@ function AppContent() {
             <Route path="/help" element={<HelpPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/track-orders" element={<TrackOrderPage />} />
+            <Route path="/track/:orderId" element={<TrackingDetailPage />} />
           </Routes>
 
         </main>

@@ -1,21 +1,16 @@
 /**
- * @BACKEND_TEAM - ORDER TRACKING & HISTORY INTEGRATION:
+ * @BACKEND_TEAM - ORDER HISTORY INTEGRATION:
  * 
- * 1. Tracking Form Submission (Track Order Tab):
- *    - Wire up the form to `GET /api/orders/track?orderId={id}&email={email}`.
- *    - Render the order status (e.g., "Processing", "Shipped", "Out for Delivery") dynamically on success.
- * 2. Order History (Order History Tab):
+ * 1. Order History:
  *    - Query `GET /api/orders/me` to populate the `mockOrders` array.
- *    - IMPORTANT: The API should return the primary `productId` in the order object so users can click the row and be redirected to the exact product page (`/product/${order.productId}`).
- *    - Handle pagination if the user has many orders.
+ *    - The API should return full order details including `status`, `total`, `items` (with images/sizes).
+ * 2. Track Order Action:
+ *    - The "Track Order" button should trigger a modal or redirect to a dedicated tracking page: `/orders/track?orderId={id}`.
  */
-import { useState } from 'react';
-import { Search, Package } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function TrackOrderPage() {
-  const [activeTab, setActiveTab] = useState('track'); // 'track' or 'history'
-
   const mockOrders = [
     { 
       id: 'ORD-0948', 
@@ -57,118 +52,78 @@ export default function TrackOrderPage() {
   ];
 
   return (
-    <div className="pt-32 pb-20 max-w-4xl mx-auto px-4 min-h-screen">
-      <h1 className="font-heading text-4xl uppercase font-bold mb-8 text-center">Orders & Tracking</h1>
+    <div className="pt-32 pb-20 max-w-5xl mx-auto px-4 min-h-screen">
+      <h1 className="font-heading text-4xl uppercase font-bold mb-12 text-center border-b border-border pb-6">Order History</h1>
       
-      {/* Tabs */}
-      <div className="flex justify-center gap-8 border-b border-border mb-12">
-        <button 
-          onClick={() => setActiveTab('track')}
-          className={`pb-4 font-bold uppercase tracking-widest text-sm transition-colors relative ${activeTab === 'track' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          Track Order
-          {activeTab === 'track' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-foreground"></span>}
-        </button>
-        <button 
-          onClick={() => setActiveTab('history')}
-          className={`pb-4 font-bold uppercase tracking-widest text-sm transition-colors relative ${activeTab === 'history' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          Order History
-          {activeTab === 'history' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-foreground"></span>}
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className="mt-8">
-        
-        {/* Track Order Tab */}
-        {activeTab === 'track' && (
-          <div className="max-w-md mx-auto text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <p className="text-muted-foreground text-sm uppercase tracking-widest mb-8">Enter your order number and email to see the status.</p>
-            <form className="space-y-6 text-left" onSubmit={e => e.preventDefault()}>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest mb-2">Order Number</label>
-                <input required type="text" placeholder="e.g. ORD-001" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest mb-2">Email Address</label>
-                <input required type="email" placeholder="Email used for purchase" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {mockOrders.length > 0 ? mockOrders.map(order => (
+          <div key={order.id} className="border border-border bg-white shadow-sm hover:shadow-md transition-shadow">
+            
+            {/* Card Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-muted/20 p-5 border-b border-border gap-6">
+              
+              {/* Left Side: Details & Status */}
+              <div className="flex flex-wrap gap-8 text-sm items-center">
+                <div>
+                  <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Order Placed</p>
+                  <p className="font-bold">{order.date}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
+                  <p className="font-bold">${order.total.toFixed(2)}</p>
+                </div>
+                <div>
+                  <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                      order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                      order.status === 'Shipping' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                  }`}>
+                    {order.status}
+                  </span>
+                </div>
               </div>
               
-              <button type="submit" className="w-full py-4 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors flex items-center justify-center gap-2">
-                <Search className="w-4 h-4" /> Track Order
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Order History Tab */}
-        {activeTab === 'history' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto">
-            <div className="space-y-8">
-              {mockOrders.length > 0 ? mockOrders.map(order => (
-                <div key={order.id} className="border border-border bg-white shadow-sm hover:shadow-md transition-shadow">
-                  
-                  {/* Card Header */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-muted/20 p-5 border-b border-border gap-4">
-                    <div className="flex gap-8 text-sm">
-                      <div>
-                        <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Order Placed</p>
-                        <p className="font-bold">{order.date}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
-                        <p className="font-bold">${order.total.toFixed(2)}</p>
-                      </div>
+              {/* Right Side: Order ID & Actions */}
+              <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t border-border/50 md:border-0 pt-4 md:pt-0">
+                <div className="text-sm">
+                  <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Order #</p>
+                  <p className="font-bold uppercase tracking-widest">{order.id}</p>
+                </div>
+                <div className="h-10 w-px bg-border hidden md:block"></div>
+                <Link to={`/track/${order.id}`} className="text-[10px] font-bold uppercase tracking-widest border border-black px-4 py-2 hover:bg-black hover:text-white transition-colors whitespace-nowrap">
+                  Track Order
+                </Link>
+              </div>
+            </div>
+            
+            {/* Card Body */}
+            <div className="p-6">
+              <div className="space-y-6">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-6 border-b border-border/40 pb-6 last:border-0 last:pb-0">
+                    <div className="w-20 h-24 bg-muted relative flex-shrink-0">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                     </div>
-                    <div className="text-sm w-full sm:w-auto flex justify-between sm:block">
-                      <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1 sm:text-right">Order #</p>
-                      <p className="font-bold uppercase tracking-widest">{order.id}</p>
+                    <div className="flex-1 flex flex-col justify-center">
+                      <Link to={`/product/${item.id}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 w-fit line-clamp-1">{item.name}</Link>
+                      <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} <span className="mx-2 text-border">•</span> Qty: {item.qty}</p>
+                    </div>
+                    <div className="flex items-center hidden sm:flex">
+                      <Link to={`/product/${item.id}`} className="text-[10px] font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted transition-colors whitespace-nowrap">
+                        View Product
+                      </Link>
                     </div>
                   </div>
-                  
-                  {/* Card Body */}
-                  <div className="p-6">
-                    <div className="mb-6">
-                      <span className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${
-                          order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                          order.status === 'Shipping' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex gap-6 border-b border-border/40 pb-6 last:border-0 last:pb-0">
-                          <div className="w-20 h-24 bg-muted relative flex-shrink-0">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1 flex flex-col justify-center">
-                            <Link to={`/product/${item.id}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 w-fit line-clamp-1">{item.name}</Link>
-                            <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} <span className="mx-2 text-border">•</span> Qty: {item.qty}</p>
-                          </div>
-                          <div className="flex items-center hidden sm:flex">
-                            <Link to={`/product/${item.id}`} className="text-[10px] font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted transition-colors whitespace-nowrap">
-                              View Product
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )) : (
-                <div className="p-12 text-center border border-border border-dashed text-muted-foreground text-sm uppercase tracking-widest">
-                  No previous orders found.
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           </div>
+        )) : (
+          <div className="p-12 text-center border border-border border-dashed text-muted-foreground text-sm uppercase tracking-widest">
+            No previous orders found.
+          </div>
         )}
-
       </div>
     </div>
   );
