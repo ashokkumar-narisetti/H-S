@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingBag } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function ProductCard({ product }) {
   const [isHovered, setIsHovered] = useState(false);
   const addToCart = useCartStore(state => state.addToCart);
   const { wishlistItems, toggleWishlist } = useWishlistStore();
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const navigate = useNavigate();
 
   const isWishlisted = wishlistItems.some(item => item.id === product.id);
 
@@ -21,6 +24,10 @@ export default function ProductCard({ product }) {
 
   const handleWishlistToggle = (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
     toggleWishlist(product);
   };
 

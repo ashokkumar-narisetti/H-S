@@ -72,7 +72,7 @@ export default function TrackOrderPage() {
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
                   <p className="font-bold">₹{order.total.toFixed(2)}</p>
                 </div>
-                <div>
+                <div className="flex flex-col items-start">
                   <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
                       order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
                       order.status === 'Shipping' ? 'bg-blue-100 text-blue-800' :
@@ -81,6 +81,9 @@ export default function TrackOrderPage() {
                   }`}>
                     {order.status}
                   </span>
+                  {(order.status === 'In Progress' || order.status === 'Delivered') && (
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{order.date}</p>
+                  )}
                 </div>
               </div>
               

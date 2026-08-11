@@ -26,8 +26,9 @@ export default function CheckoutPage() {
   const [isChangingAddress, setIsChangingAddress] = useState(false);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const gst = subtotal * 0.18;
   const shipping = subtotal > 150 ? 0 : 10;
-  const total = subtotal + shipping;
+  const total = subtotal + gst + shipping;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -168,6 +169,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="font-bold">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground uppercase tracking-widest">Estimated GST (18%)</span>
+                  <span className="font-bold">₹{gst.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>

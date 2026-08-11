@@ -209,7 +209,13 @@ export default function ProductDetailPage() {
             </button>
 
             <button 
-              onClick={() => toggleWishlist(product)}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/login');
+                  return;
+                }
+                toggleWishlist(product);
+              }}
               className={`w-14 flex items-center justify-center border-2 transition-colors ${
                 isWishlisted
                   ? 'border-foreground bg-foreground text-background'

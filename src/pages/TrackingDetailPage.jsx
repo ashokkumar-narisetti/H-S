@@ -57,25 +57,8 @@ export default function TrackingDetailPage() {
         {/* Left Column: Tracking Hero & History */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Tracking Hero Card */}
+          {/* Tracking Card */}
           <div className="bg-white border border-border shadow-sm p-8 sm:p-10">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-6 mb-10">
-              <div>
-                <h2 className="font-heading text-4xl uppercase font-black tracking-tight mb-2">{orderDetails.status}</h2>
-                <p className="text-muted-foreground font-medium text-sm flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> Estimated Delivery: <span className="text-black font-bold uppercase tracking-widest">{orderDetails.estimatedDelivery}</span>
-                </p>
-              </div>
-              <div className="bg-muted/30 p-4 border border-border text-center sm:text-right">
-                <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Carrier: {orderDetails.shipper}</p>
-                <div className="flex items-center justify-center sm:justify-end gap-2">
-                  <p className="font-bold uppercase tracking-widest text-lg">{orderDetails.trackingId}</p>
-                  <a href={orderDetails.trackingLink} target="_blank" rel="noopener noreferrer" className="text-black hover:text-muted-foreground transition-colors" title="Track on carrier site">
-                    <ExternalLink className="w-5 h-5" />
-                  </a>
-                </div>
-              </div>
-            </div>
 
             {/* Horizontal Timeline */}
             <div className="relative mb-16 px-2 sm:px-8">
@@ -106,29 +89,7 @@ export default function TrackingDetailPage() {
               </div>
             </div>
 
-            {/* Detailed History Log */}
-            <div>
-              <h3 className="font-heading text-sm font-bold uppercase tracking-widest mb-6 border-b border-border pb-4">Tracking History</h3>
-              <div className="space-y-6">
-                {orderDetails.history.map((event, idx) => (
-                  <div key={idx} className="flex gap-4 sm:gap-6 relative">
-                    <div className="w-24 sm:w-32 flex-shrink-0 text-right pt-0.5">
-                      <p className={`text-[10px] uppercase tracking-widest font-bold ${event.active ? 'text-black' : 'text-muted-foreground'}`}>{event.date}</p>
-                    </div>
-                    <div className="relative flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full border-2 ${event.active ? 'border-black bg-black' : event.completed ? 'border-black bg-white' : 'border-border bg-white'} z-10`}></div>
-                      {idx !== orderDetails.history.length - 1 && (
-                        <div className="w-px h-full bg-border absolute top-3"></div>
-                      )}
-                    </div>
-                    <div className="pb-6">
-                      <p className={`text-sm font-bold uppercase tracking-widest ${event.active ? 'text-black' : 'text-muted-foreground'}`}>{event.status}</p>
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{event.location}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+
           </div>
         </div>
 
