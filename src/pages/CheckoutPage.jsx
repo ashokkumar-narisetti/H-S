@@ -171,7 +171,7 @@ export default function CheckoutPage() {
                   <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground uppercase tracking-widest">Estimated GST (18%)</span>
+                  <span className="text-muted-foreground uppercase tracking-widest">GST (18%)</span>
                   <span className="font-bold">₹{gst.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
