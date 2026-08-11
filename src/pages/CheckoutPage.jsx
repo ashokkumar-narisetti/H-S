@@ -11,22 +11,39 @@
  * 3. Empty Cart:
  *    - Only clear the local cart (`clearCart()`) AFTER the backend successfully confirms the order creation.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, MapPin } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, Info } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { cartItems, clearCart, updateQuantity, removeFromCart } = useCartStore();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showGstInfo, setShowGstInfo] = useState(false);
+  const gstInfoRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (gstInfoRef.current && !gstInfoRef.current.contains(event.target)) {
+        setShowGstInfo(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   
   // Mock Address State
   const [hasSavedAddress, setHasSavedAddress] = useState(true);
   const [isChangingAddress, setIsChangingAddress] = useState(false);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const gst = subtotal * 0.18;
+  const gst = cartItems.reduce((sum, item) => {
+    const rate = item.price > 2500 ? 0.18 : 0.05;
+    return sum + (item.price * item.quantity * rate);
+  }, 0);
   const shipping = subtotal > 150 ? 0 : 10;
   const total = subtotal + gst + shipping;
 
@@ -170,8 +187,23 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground uppercase tracking-widest">GST (18%)</span>
+                <div className="flex justify-between relative items-center">
+                  <div className="flex items-center gap-2" ref={gstInfoRef}>
+                    <span className="text-muted-foreground uppercase tracking-widest">GST</span>
+                    <button 
+                      type="button"
+                      onClick={() => setShowGstInfo(!showGstInfo)}
+                      className="text-muted-foreground hover:text-black transition-colors"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                    {showGstInfo && (
+                      <div className="absolute top-6 left-0 bg-white border border-black p-3 text-[10px] uppercase font-bold tracking-widest z-10 shadow-lg w-48 text-black">
+                        <p className="mb-2 border-b border-border pb-1">GST Rates</p>
+                        <p className="text-muted-foreground leading-relaxed">Item {'>'} ₹2500: 18%<br/>Item {'<'} ₹2500: 5%</p>
+                      </div>
+                    )}
+                  </div>
                   <span className="font-bold">₹{gst.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
