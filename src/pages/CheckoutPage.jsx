@@ -61,7 +61,7 @@ export default function CheckoutPage() {
         <div className="w-full lg:w-1/2">
           <h2 className="font-heading text-2xl font-bold uppercase tracking-widest mb-6">Order Summary</h2>
           
-          <div className="space-y-6 mb-8 max-h-[60vh] overflow-y-auto pr-4 no-scrollbar">
+          <div className="space-y-6 mb-8 lg:max-h-[820px] max-h-[60vh] overflow-y-auto pr-4">
             {cartItems.map(item => (
               <div key={`${item.id}-${item.size}`} className="flex gap-6 border-b border-border pb-6">
                 <div className="w-24 h-32 bg-muted relative flex-shrink-0">
@@ -108,20 +108,6 @@ export default function CheckoutPage() {
             ))}
           </div>
 
-          <div className="space-y-3 text-sm pt-4 mb-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
-              <span className="font-bold">₹{subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>
-              <span className="font-bold">{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
-            </div>
-          </div>
-          <div className="flex justify-between border-t border-black pt-4 mb-10">
-            <span className="font-bold uppercase tracking-widest text-lg">Total</span>
-            <span className="font-bold text-2xl">₹{total.toFixed(2)}</span>
-          </div>
         </div>
 
         {/* Right Side: Form & Payment */}
@@ -173,6 +159,25 @@ export default function CheckoutPage() {
                   )}
                 </div>
               )}
+            </section>
+
+            {/* Bill Details */}
+            <section className="bg-white border border-border p-6 mt-6">
+              <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6">Bill Details</h2>
+              <div className="space-y-3 text-sm mb-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
+                  <span className="font-bold">₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>
+                  <span className="font-bold">{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
+                </div>
+              </div>
+              <div className="flex justify-between border-t border-black pt-4">
+                <span className="font-bold uppercase tracking-widest text-lg">Total</span>
+                <span className="font-bold text-2xl">₹{total.toFixed(2)}</span>
+              </div>
             </section>
 
             {/* Payment Section */}

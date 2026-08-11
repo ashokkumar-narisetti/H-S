@@ -78,34 +78,30 @@ export default function TrackingDetailPage() {
             </div>
 
             {/* Horizontal Timeline */}
-            <div className="relative mb-12 px-2 sm:px-8">
+            <div className="relative mb-16 px-2 sm:px-8">
               {/* Background dotted line */}
               <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
               {/* Active solid line */}
-              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: '66%', marginTop: '-1px' }}></div>
+              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: '50%', marginTop: '-1px' }}></div>
               <div className="flex justify-between relative z-10">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
                     <Check className="w-4 h-4" />
                   </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Confirmed</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Shipped</p>
+                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">In Progress</p>
+                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">Oct 25, 10:05 AM</p>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-black bg-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
                     <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
                   </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Out for<br/>Delivery</p>
+                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Shipping</p>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-border bg-white flex items-center justify-center">
                   </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center text-muted-foreground">Delivered</p>
+                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center text-muted-foreground">Delivery</p>
+                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">Oct 28, 8:00 PM</p>
                 </div>
               </div>
             </div>
