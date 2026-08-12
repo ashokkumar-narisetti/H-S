@@ -51,7 +51,7 @@ export default function Home() {
       <section className="py-20 bg-muted">
         <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 w-full ">
           <div className="flex justify-between items-end mb-10 ">
-            <h2 className="font-heading text-4xl font-black uppercase tracking-tighter">Latest Drops</h2>
+            <h2 className="font-heading text-3xl md:text-4xl font-black uppercase tracking-tighter">Latest Drops</h2>
             <Link to="/category/new-arrivals" className="text-sm font-bold uppercase tracking-widest hover:underline underline-offset-4 flex items-center gap-2">
               View All <ArrowRight className="w-4 h-4" />
             </Link>
@@ -61,7 +61,7 @@ export default function Home() {
             {latestDrops.map((drop) => (
               <div key={drop.id}>
                 <h3 className="font-heading text-sm font-bold uppercase tracking-widest mb-6 border-b border-border/40 pb-2 text-muted-foreground">{drop.title}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
                   {drop.products.map(product => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -75,11 +75,11 @@ export default function Home() {
       {/* Best Sellers Grid */}
       <section className="py-24 max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex flex-col items-center mb-16">
-          <h2 className="font-heading text-4xl font-black uppercase tracking-tighter mb-4">Trending in H&S</h2>
+          <h2 className="font-heading text-3xl md:text-4xl font-black uppercase tracking-tighter mb-4">Trending in H&S</h2>
           <div className="w-16 h-1 bg-black"></div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {bestSellers.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}

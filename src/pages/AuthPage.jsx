@@ -141,12 +141,12 @@ export default function AuthPage() {
             <input required type="text" placeholder="Username" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             <input required type="email" placeholder="Email Address (Gmail preferred)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
-            <div className="flex gap-4">
+            <div className="flex flex-wrap sm:flex-nowrap gap-4">
               <CountrySelect value={countryCode} onChange={setCountryCode} />
               <input required type="tel" placeholder="Mobile Number" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Gender</label>
                 <select className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">

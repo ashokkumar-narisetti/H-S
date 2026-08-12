@@ -79,7 +79,7 @@ export default function CheckoutPage() {
         <div className="w-full lg:w-1/2">
           <h2 className="font-heading text-2xl font-bold uppercase tracking-widest mb-6">Order Summary</h2>
           
-          <div className="space-y-6 mb-8 lg:max-h-[820px] max-h-[60vh] overflow-y-auto pr-4">
+          <div className="space-y-6 mb-8 lg:max-h-[820px] max-h-none sm:max-h-[60vh] overflow-y-auto pr-4">
             {cartItems.map(item => (
               <div key={`${item.id}-${item.size}`} className="flex gap-6 border-b border-border pb-6">
                 <div className="w-24 h-32 bg-muted relative flex-shrink-0">
@@ -162,7 +162,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 bg-white p-6 border border-border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-6 border border-border">
                   <input required type="text" placeholder="First Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                   <input required type="text" placeholder="Last Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                   <input required type="text" placeholder="Street Address" className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
@@ -229,7 +229,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <input required type="text" placeholder="Card Number" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input required type="text" placeholder="MM/YY" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                   <input required type="text" placeholder="CVC" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                 </div>

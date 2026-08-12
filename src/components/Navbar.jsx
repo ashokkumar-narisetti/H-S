@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { User, ChevronDown, Home } from 'lucide-react';
+import { User, ChevronDown, Home, Menu, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
@@ -8,6 +8,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const productsRef = useRef(null);
   const profileRef = useRef(null);
@@ -27,6 +28,7 @@ export default function Navbar() {
   useEffect(() => {
     setIsProductsOpen(false);
     setIsProfileOpen(false);
+    setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
   // Close dropdowns when clicking outside
@@ -68,8 +70,15 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="flex justify-between items-center h-full">
           
-          {/* Left: Products Dropdown */}
-          <div className="flex-1 flex justify-start" ref={productsRef}>
+          {/* Mobile Left: Hamburger */}
+          <div className="flex-1 flex justify-start md:hidden">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 hover:bg-muted rounded-full transition-colors">
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Desktop Left: Products Dropdown */}
+          <div className="flex-1 hidden md:flex justify-start" ref={productsRef}>
             <div 
               className="relative"
               onMouseEnter={() => setIsProductsOpen(true)}
@@ -116,8 +125,11 @@ export default function Navbar() {
             </span>
           </div>
 
-          {/* Right: Profile Dropdown */}
-          <div className="flex-1 flex justify-end items-center gap-2" ref={profileRef}>
+          {/* Mobile Right: Empty for balance */}
+          <div className="flex-1 md:hidden"></div>
+
+          {/* Desktop Right: Profile Dropdown */}
+          <div className="flex-1 hidden md:flex justify-end items-center gap-2" ref={profileRef}>
             <Link 
               to="/" 
               className="p-2 hover:bg-muted rounded-full transition-colors flex items-center justify-center" 
@@ -196,6 +208,63 @@ export default function Navbar() {
 
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'tween', duration: 0.3 }}
+            className="fixed inset-0 bg-white z-[60] flex flex-col pt-24 px-8 overflow-y-auto"
+          >
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute top-6 right-6 p-2 hover:bg-muted rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <div className="flex flex-col gap-10 pb-20">
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6">Shop</h3>
+                <div className="flex flex-col gap-6">
+                  {categories.map((cat) => (
+                    <Link 
+                      key={cat.name} 
+                      to={cat.path}
+                      className="text-2xl font-black uppercase tracking-tighter hover:text-muted-foreground transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="border-t border-border pt-8">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6">Account</h3>
+                <div className="flex flex-col gap-5">
+                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Home</Link>
+                  {isAuthenticated ? (
+                    profileLinks.map(link => link.path ? (
+                      <Link key={link.name} to={link.path} onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">{link.name}</Link>
+                    ) : (
+                      <button key={link.name} onClick={() => { link.action(); setIsMobileMenuOpen(false); }} className="text-sm font-bold uppercase tracking-widest text-left text-red-500 hover:text-red-600 transition-colors">{link.name}</button>
+                    ))
+                  ) : (
+                    <>
+                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Sign In</Link>
+                      <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Create Account</Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }

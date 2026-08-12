@@ -170,7 +170,7 @@ export default function CategoryPage() {
               <p className="text-muted-foreground uppercase text-sm tracking-widest">Try adjusting your filters</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-12">
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
