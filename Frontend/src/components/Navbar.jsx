@@ -57,7 +57,7 @@ export default function Navbar() {
     { name: 'Profile', path: '/account' },
     { name: 'Addresses', path: '/addresses' },
     { name: 'Wishlist', path: '/wishlist' },
-    { name: 'Bag', path: '/checkout' }, // Using checkout as cart/bag view since Cart Drawer icon is removed
+    { name: 'Cart', path: '/checkout' }, // Using checkout as cart/bag view since Cart Drawer icon is removed
     { name: 'Order History & Track', path: '/track-orders' },
     // { name: 'Wallet', path: '/wallet' },
     { name: 'Help', path: '/help' },

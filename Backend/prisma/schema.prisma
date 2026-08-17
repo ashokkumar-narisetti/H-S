@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------
+// 1. USER & AUTHENTICATION
+// -----------------------------------------------------------------------
+model User {
+  id          String    @id @default(uuid())
+  fullName    String
+  username    String    @unique
+  email       String    @unique
+  password    String
+  role        Role      @default(USER)
+  mobile      String?
+  countryCode String?
+  gender      String?
+  dob         DateTime?
+
+  // Security Tokens
+  refreshToken        String?
+  resetPasswordToken  String?
+  resetPasswordExpiry DateTime?
+
+  // Relationships
+  addresses Address[]
+  orders    Order[]
+  reviews   Review[]
+  cart      Cart?
+  wishlist  Product[] @relation("UserWishlist")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Address {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  street    String
+  city      String
+  state     String?
+  zipCode   String
+  country   String
+  isDefault Boolean @default(false)
+}
+
+// -----------------------------------------------------------------------
+// 2. CATALOG & INVENTORY
+// -----------------------------------------------------------------------
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  price        Float
+  images       String[]
+  category     String
+  fit          String?
+  isNew        Boolean  @default(true)
+  isBestSeller Boolean  @default(false)
+  stock        Int      @default(0)
+  sizes        String[]
+  colors       String[]
+
+  // Relationships
+  dropId       String?
+  drop         Drop?       @relation(fields: [dropId], references: [id])
+  orderItems   OrderItem[]
+  cartItems    CartItem[]
+  reviews      Review[]
+  wishlistedBy User[]      @relation("UserWishlist")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Drop {
+  id          String    @id @default(uuid())
+  title       String
+  products    Product[]
+  isActive    Boolean   @default(true)
+  releaseDate DateTime  @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int // 1 to 5
+  comment   String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// -----------------------------------------------------------------------
+// 3. SHOPPING CART
+// -----------------------------------------------------------------------
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(uuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  color     String?
+  quantity  Int
+}
+
+// -----------------------------------------------------------------------
+// 4. ORDERS & CHECKOUT
+// -----------------------------------------------------------------------
+model Order {
+  id     String      @id @default(uuid())
+  userId String
+  user   User        @relation(fields: [userId], references: [id])
+  items  OrderItem[]
+
+  // Financials
+  taxPrice      Float
+  shippingPrice Float
+  totalPrice    Float
+
+  // Logistics
+  shippingAddress String
+  status          OrderStatus @default(IN_PROGRESS)
+  trackingNumber  String?
+
+  // Payment
+  paymentStatus String  @default("PENDING")
+  transactionId String? // e.g., Stripe/Razorpay payment intent ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum OrderStatus {
+  IN_PROGRESS
+  SHIPPING
+  DELIVERED
+  CANCELED
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  name      String
+  size      String
+  color     String?
+  quantity  Int
+  price     Float // Price frozen at checkout
+}
+
+enum paymentStatus{
+   NOT_SUCCESSFULL
+   PENDING
+   SUCCESSFULL
+}
