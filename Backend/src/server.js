@@ -4,6 +4,10 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import addressRoutes from './routes/address.routes.js';
+import productRoutes from './routes/product.routes.js';
+import dropRoutes from './routes/drop.routes.js';
 
 dotenv.config();
 
@@ -20,6 +24,10 @@ app.use(cors({
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/drops', dropRoutes);
 
 // Health check
 app.get('/', (req, res) => {

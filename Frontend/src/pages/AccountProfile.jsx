@@ -10,31 +10,87 @@
  *    - Call `POST /api/auth/logout` to destroy session/clear httpOnly cookies.
  *    - Clear local client states (Zustand auth store, cart, etc.) and redirect to `/`.
  */
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { axiosInstance } from '../lib/axios';
 import { Package, User, LogOut } from 'lucide-react';
 import { COUNTRIES } from '../data/countries';
 
 export default function AccountProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    fullName: 'John Doe',
-    username: 'johndoe99',
-    email: 'john.doe@gmail.com',
-    mobile: '+91 9876543210',
-    gender: 'Male',
-    dob: '1999-12-31',
+    fullName: '',
+    username: '',
+    email: '',
+    mobile: '',
+    gender: '',
+    dob: '',
     country: '+91'
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axiosInstance.get('/users/profile');
+        const data = res.data;
+        // Format date to YYYY-MM-DD for the input field
+        const formattedDob = data.dob ? new Date(data.dob).toISOString().split('T')[0] : '';
+        setProfile({
+          fullName: data.fullName || '',
+          username: data.username || '',
+          email: data.email || '',
+          mobile: data.mobile || '',
+          gender: data.gender || '',
+          dob: formattedDob,
+          country: data.countryCode || '+91'
+        });
+      } catch (error) {
+        console.error(error);
+        if (error.response?.status === 401) {
+          toast.error('Session expired. Please log in again.');
+          navigate('/login');
+        } else {
+          toast.error('Failed to load profile');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [navigate]);
 
   const handleChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
-  const handleSave = () => {
-    // @BACKEND_TEAM: PUT /api/user/profile with `profile` payload
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      await axiosInstance.put('/users/profile', {
+        fullName: profile.fullName,
+        email: profile.email,
+        mobile: profile.mobile,
+        countryCode: profile.country,
+        gender: profile.gender,
+        dob: profile.dob
+      });
+      toast.success('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">

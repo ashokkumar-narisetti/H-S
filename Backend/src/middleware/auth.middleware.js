@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma.js';
 
 export const protectRoute = async (req, res, next) => {
   try {
@@ -14,8 +15,17 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized - Invalid token' });
     }
 
-    // Attach userId to the request for the next middleware/controller
-    req.user = { id: decoded.userId };
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, role: true }
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized - User not found' });
+    }
+
+    // Attach userId and role to the request for the next middleware/controller
+    req.user = user;
     
     next();
   } catch (error) {

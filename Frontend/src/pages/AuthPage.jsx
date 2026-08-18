@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import toast from 'react-hot-toast';
 import { ChevronDown } from 'lucide-react';
 import { useRef } from 'react';
 import { COUNTRIES } from '../data/countries';
@@ -100,12 +101,38 @@ export default function AuthPage() {
   }, [location]);
 
   const login = useAuthStore(state => state.login);
+  const signup = useAuthStore(state => state.signup);
+  const isLoggingIn = useAuthStore(state => state.isLoggingIn);
+  const isSigningUp = useAuthStore(state => state.isSigningUp);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // @BACKEND_TEAM: Once API returns success and JWT, pass the user object here.
-    login({ name: isLogin ? 'John Doe' : 'New User', username: 'johndoe99' });
-    navigate('/');
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+
+    try {
+      if (isLogin) {
+        await login({ email: data.email, password: data.password });
+        navigate('/');
+      } else {
+        if (data.password !== data.confirmPassword) {
+          return toast.error('Passwords do not match');
+        }
+        await signup({
+          fullName: data.fullName,
+          username: data.username,
+          email: data.email,
+          countryCode,
+          mobile: data.mobile,
+          gender: data.gender,
+          dob: data.dob,
+          password: data.password
+        });
+        navigate('/');
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -132,24 +159,24 @@ export default function AuthPage() {
       <form onSubmit={handleSubmit} className="space-y-4 text-left">
         {isLogin ? (
           <>
-            <input required type="email" placeholder="Email Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="email" name="email" placeholder="Email Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="password" name="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
           </>
         ) : (
           <>
-            <input required type="text" placeholder="Full Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="text" placeholder="Username" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="email" placeholder="Email Address (Gmail preferred)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="text" name="fullName" placeholder="Full Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="text" name="username" placeholder="Username" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="email" name="email" placeholder="Email Address (Gmail preferred)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
             <div className="flex flex-wrap sm:flex-nowrap gap-4">
               <CountrySelect value={countryCode} onChange={setCountryCode} />
-              <input required type="tel" placeholder="Mobile Number" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+              <input required type="tel" name="mobile" placeholder="Mobile Number" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Gender</label>
-                <select className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">
+                <select name="gender" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">
                   <option value="" disabled>Select Gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -161,14 +188,15 @@ export default function AuthPage() {
                 <input 
                   required 
                   type="date" 
+                  name="dob"
                   title="Date of Birth" 
                   className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground uppercase text-xs tracking-widest text-muted-foreground" 
                 />
               </div>
             </div>
 
-            <input required type="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="password" placeholder="Confirm Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="password" name="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <input required type="password" name="confirmPassword" placeholder="Confirm Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
             <TermsAccordion />
             <label className="flex items-start gap-3 mt-4 cursor-pointer">
@@ -180,8 +208,8 @@ export default function AuthPage() {
           </>
         )}
 
-        <button type="submit" className="w-full py-4 mt-6 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors">
-          {isLogin ? 'Sign In' : 'Sign Up'}
+        <button disabled={isLoggingIn || isSigningUp} type="submit" className="w-full py-4 mt-6 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors disabled:opacity-50">
+          {isLoggingIn || isSigningUp ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
         </button>
       </form>
 
