@@ -19,6 +19,7 @@ model User {
   role        Role      @default(USER)
   mobile      String?
   countryCode String?
+  country     String?
   gender      String?
   dob         DateTime?
 

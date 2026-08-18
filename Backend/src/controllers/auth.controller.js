@@ -19,7 +19,7 @@ const generateToken = (userId, res) => {
 
 export const register = async (req, res) => {
   try {
-    const { fullName, username, email, password, mobile, countryCode, gender, dob } = req.body;
+    const { fullName, username, email, password, mobile, countryCode, country, gender, dob } = req.body;
 
     // Validate inputs
     if (!fullName || !username || !email || !password) {
@@ -54,6 +54,7 @@ export const register = async (req, res) => {
         password: hashedPassword,
         mobile,
         countryCode,
+        country,
         gender,
         dob: dob ? new Date(dob) : null,
       },

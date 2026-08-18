@@ -55,18 +55,18 @@ function CountrySelect({ value, onChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selected = COUNTRIES.find(c => c.code === value) || COUNTRIES[0];
+  const selected = COUNTRIES.find(c => c.name === value) || COUNTRIES.find(c => c.name === 'India') || COUNTRIES[0];
 
   return (
-    <div className="relative w-32 flex-shrink-0" ref={ref}>
+    <div className="relative w-full" ref={ref}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-full px-3 py-4 border border-border bg-background flex items-center justify-between focus:outline-none focus:border-foreground"
+        className="w-full h-full px-4 py-4 border border-border bg-background flex items-center justify-between focus:outline-none focus:border-foreground"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <img src={selected.flag} alt={selected.iso} className="w-5 h-auto shadow-sm" />
-          <span className="text-sm font-medium">{selected.code}</span>
+          <span className="text-sm font-medium uppercase tracking-widest text-muted-foreground">{selected.name}</span>
         </div>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </button>
@@ -75,13 +75,13 @@ function CountrySelect({ value, onChange }) {
         <div className="absolute top-full left-0 w-full mt-1 bg-white border border-border shadow-lg z-50 max-h-60 overflow-y-auto">
           {COUNTRIES.map(c => (
             <button
-              key={c.code}
+              key={c.iso}
               type="button"
-              onClick={() => { onChange(c.code); setIsOpen(false); }}
-              className="w-full px-3 py-3 flex items-center gap-2 hover:bg-muted transition-colors text-sm"
+              onClick={() => { onChange(c.name); setIsOpen(false); }}
+              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted transition-colors text-sm"
             >
               <img src={c.flag} alt={c.iso} className="w-5 h-auto shadow-sm" />
-              <span className="font-medium">{c.code}</span>
+              <span className="font-medium uppercase tracking-widest text-muted-foreground text-xs">{c.name}</span>
             </button>
           ))}
         </div>
@@ -94,8 +94,14 @@ export default function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(location.pathname === '/login');
-  const [countryCode, setCountryCode] = useState('+91');
+  const [country, setCountry] = useState('India');
+  const [dob, setDob] = useState('');
   
+  const selectedCountryObj = COUNTRIES.find(c => c.name === country) || COUNTRIES.find(c => c.name === 'India');
+  const countryCode = selectedCountryObj?.code || '+91';
+
+  const calculatedAge = dob ? Math.abs(new Date(Date.now() - new Date(dob).getTime()).getUTCFullYear() - 1970) : '';
+
   useEffect(() => {
     setIsLogin(location.pathname === '/login');
   }, [location]);
@@ -122,6 +128,7 @@ export default function AuthPage() {
           fullName: data.fullName,
           username: data.username,
           email: data.email,
+          country,
           countryCode,
           mobile: data.mobile,
           gender: data.gender,
@@ -168,12 +175,14 @@ export default function AuthPage() {
             <input required type="text" name="username" placeholder="Username" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             <input required type="email" name="email" placeholder="Email Address (Gmail preferred)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
-            <div className="flex flex-wrap sm:flex-nowrap gap-4">
-              <CountrySelect value={countryCode} onChange={setCountryCode} />
-              <input required type="tel" name="mobile" placeholder="Mobile Number" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <CountrySelect value={country} onChange={setCountry} />
+            
+            <div className="flex gap-4">
+              <input type="text" value={countryCode} readOnly className="w-24 p-4 border border-border bg-muted/50 text-muted-foreground focus:outline-none cursor-not-allowed text-center font-medium" />
+              <input required type="tel" name="mobile" placeholder="Mobile Number" className="flex-1 p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Gender</label>
                 <select name="gender" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" required defaultValue="">
@@ -189,8 +198,19 @@ export default function AuthPage() {
                   required 
                   type="date" 
                   name="dob"
-                  title="Date of Birth" 
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
                   className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground uppercase text-xs tracking-widest text-muted-foreground" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-muted-foreground mb-2 ml-1">Age</label>
+                <input 
+                  type="text" 
+                  value={calculatedAge ? `${calculatedAge} YRS` : ''} 
+                  readOnly 
+                  placeholder="AUTO"
+                  className="w-full p-4 border border-border bg-muted/50 text-muted-foreground focus:outline-none cursor-not-allowed uppercase text-xs tracking-widest font-medium" 
                 />
               </div>
             </div>
