@@ -18,20 +18,6 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 
-<<<<<<< HEAD
-// Allow multiple frontend URLs (e.g., User site and Admin site)
-const allowedOrigins = process.env.CLIENT_URL 
-  ? process.env.CLIENT_URL.split(',') 
-  : ['http://localhost:5173', 'http://localhost:5174'];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-=======
 // Configurable CORS from process.env.CLIENT_URL (supports single or comma-separated origins)
 const envOrigins = (process.env.CLIENT_URL || '')
   .split(',')
@@ -61,7 +47,6 @@ app.use(cors({
       return callback(null, true);
     }
     return callback(new Error(`CORS policy error: Origin ${origin} not allowed.`));
->>>>>>> 81147d6bb8c5b1f4261ec6f7ccc783de6fc75499
   },
   credentials: true,
 }));
