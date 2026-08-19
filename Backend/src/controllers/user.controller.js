@@ -137,3 +137,109 @@ export const getAllUsers = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching users' });
   }
 };
+
+// @desc    Create user by admin
+// @route   POST /api/users
+// @access  Private/Admin
+export const createUser = async (req, res) => {
+  try {
+    const { username, fullName, fullname, email, mobile, phone, country, gender, age, shippingAddress } = req.body;
+
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    const nameToUse = fullName || fullname || username || 'New User';
+    const userNameToUse = username || email.split('@')[0] || `user_${Date.now()}`;
+
+    const newUser = await prisma.user.create({
+      data: {
+        fullName: nameToUse,
+        username: userNameToUse,
+        email,
+        password: '$2a$10$defaultDummyHashedPasswordForAdminCreatedUsers',
+        mobile: mobile || phone,
+        country: country || 'United States',
+        gender: gender || 'Male',
+        status: 'Active'
+      }
+    });
+
+    res.status(201).json({
+      id: newUser.id,
+      username: newUser.username,
+      fullname: newUser.fullName,
+      email: newUser.email,
+      phone: newUser.mobile,
+      country: newUser.country,
+      status: newUser.status,
+      joinedDate: newUser.createdAt.toISOString().split('T')[0]
+    });
+  } catch (error) {
+    console.error('Error creating user:', error.message);
+    res.status(500).json({ message: 'Server error while creating user' });
+  }
+};
+
+// @desc    Update user status
+// @route   PATCH /api/users/:id/status
+// @access  Private/Admin
+export const updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status }
+    });
+
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Error updating user status:', error.message);
+    res.status(500).json({ message: 'Server error while updating user status' });
+  }
+};
+
+// @desc    Update user details by admin
+// @route   PUT /api/users/:id
+// @access  Private/Admin
+export const updateUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, fullname, email, mobile, phone, country, gender, status } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        fullName: fullName || fullname,
+        email,
+        mobile: mobile || phone,
+        country,
+        gender,
+        status
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error updating user details:', error.message);
+    res.status(500).json({ message: 'Server error while updating user details' });
+  }
+};
+
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private/Admin
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.user.delete({ where: { id } });
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error.message);
+    res.status(500).json({ message: 'Server error while deleting user' });
+  }
+};
+
