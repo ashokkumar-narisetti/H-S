@@ -17,6 +17,7 @@ model User {
   email       String    @unique
   password    String
   role        Role      @default(USER)
+  status      String    @default("Active")
   mobile      String?
   countryCode String?
   country     String?
@@ -136,18 +137,32 @@ model Order {
   items  OrderItem[]
 
   // Financials
-  taxPrice      Float
-  shippingPrice Float
+  taxPrice      Float @default(0)
+  shippingPrice Float @default(0)
   totalPrice    Float
+  mfgPayment    Float @default(0)
 
   // Logistics
   shippingAddress String
   status          OrderStatus @default(IN_PROGRESS)
+  shipperName     String?
   trackingNumber  String?
+  trackingLink    String?
 
   // Payment
-  paymentStatus String  @default("PENDING")
-  transactionId String? // e.g., Stripe/Razorpay payment intent ID
+  paymentStatus    String  @default("PENDING")
+  mfgPaymentStatus String  @default("Unpaid")
+  mfgPaidDate      String?
+  transactionId    String? // e.g., Stripe/Razorpay payment intent ID
+
+  // Price Adjustment & Cancel Requests
+  cancelReason          String?
+  cancelRequested       Boolean @default(false)
+  priceAdjustmentAmount Float?
+  priceAdjustmentReason String?
+  priceAdjustmentStatus String?
+
+  completedDate String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
