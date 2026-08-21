@@ -15,9 +15,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middlewares - 50mb payload limit for storing base64 image URIs directly in database columns
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Middlewares - 100mb payload limit for storing base64 image URIs directly in database columns
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(cookieParser());
 
 // Configurable CORS from process.env.CLIENT_URL (supports single or comma-separated origins, or '*' for all origins)

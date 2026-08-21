@@ -1,6 +1,18 @@
 import { prisma } from '../lib/prisma.js';
 import { sanitizeProductImageFields } from '../utils/imageHelper.js';
 
+const safeParseFloat = (val) => {
+  if (val === null || val === undefined || val === '') return null;
+  const parsed = parseFloat(val);
+  return isNaN(parsed) ? null : parsed;
+};
+
+const safeParseInt = (val) => {
+  if (val === null || val === undefined || val === '') return null;
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? null : parsed;
+};
+
 // @desc    Get all products with filters
 // @route   GET /api/products or /api/catalogue/products
 // @access  Public
@@ -73,15 +85,15 @@ export const createProduct = async (req, res) => {
     } = body;
 
     const targetDropId = dropIdFromParams || dropId;
-    const finalPrice = price !== undefined ? parseFloat(price) : (userPrice ? parseFloat(userPrice) : 0);
+    const finalPrice = price !== undefined ? safeParseFloat(price) : (userPrice ? safeParseFloat(userPrice) : 0);
 
     const createPayload = {
       name: name || 'Untitled Product',
       manufactureName: manufactureName || null,
       description: description || '',
-      price: finalPrice,
-      userPrice: userPrice ? parseFloat(userPrice) : finalPrice,
-      manufacturePrice: manufacturePrice ? parseFloat(manufacturePrice) : null,
+      price: finalPrice ?? 0,
+      userPrice: userPrice ? safeParseFloat(userPrice) : (finalPrice ?? 0),
+      manufacturePrice: safeParseFloat(manufacturePrice),
       images: Array.isArray(images) && images.length > 0 ? images : (coverPhoto ? [coverPhoto] : []),
       coverPhoto: coverPhoto || (Array.isArray(images) && images[0] ? images[0] : ''),
       category: category || 'T-Shirts',
@@ -89,7 +101,7 @@ export const createProduct = async (req, res) => {
       fit: fit || null,
       isNew: isNew === undefined ? true : isNew,
       isBestSeller: isBestSeller || false,
-      stock: stock ? parseInt(stock) : 0,
+      stock: stock ? (safeParseInt(stock) ?? 0) : 0,
       inStock: inStock !== undefined ? inStock : true,
       sizes: sizes || [],
       colors: colors || [],
@@ -100,9 +112,6 @@ export const createProduct = async (req, res) => {
       manufactureSpec: manufactureSpec || null,
       dropId: targetDropId || null
     };
-
-    console.log('PRISMA CREATE PAYLOAD KEYS:', Object.keys(createPayload));
-    console.log('PRISMA CREATE PAYLOAD FULL:', JSON.stringify(createPayload));
 
     const product = await prisma.product.create({
       data: createPayload
@@ -139,19 +148,19 @@ export const updateProduct = async (req, res) => {
       where: { id: productId },
       data: {
         ...(name !== undefined && { name }),
-        ...(manufactureName !== undefined && { manufactureName }),
+        ...(manufactureName !== undefined && { manufactureName: manufactureName || null }),
         ...(description !== undefined && { description }),
-        ...(price !== undefined && { price: parseFloat(price) }),
-        ...(userPrice !== undefined && { userPrice: parseFloat(userPrice) }),
-        ...(manufacturePrice !== undefined && { manufacturePrice: parseFloat(manufacturePrice) }),
-        ...(images !== undefined && { images }),
+        ...(price !== undefined && { price: safeParseFloat(price) ?? product.price }),
+        ...(userPrice !== undefined && { userPrice: safeParseFloat(userPrice) }),
+        ...(manufacturePrice !== undefined && { manufacturePrice: safeParseFloat(manufacturePrice) }),
+        ...(images !== undefined && { images: Array.isArray(images) ? images : [] }),
         ...(coverPhoto !== undefined && { coverPhoto }),
         ...(category !== undefined && { category }),
         ...(gender !== undefined && { gender }),
         ...(fit !== undefined && { fit }),
         ...(isNew !== undefined && { isNew }),
         ...(isBestSeller !== undefined && { isBestSeller }),
-        ...(stock !== undefined && { stock: parseInt(stock) }),
+        ...(stock !== undefined && { stock: safeParseInt(stock) ?? product.stock }),
         ...(inStock !== undefined && { inStock }),
         ...(sizes !== undefined && { sizes }),
         ...(colors !== undefined && { colors }),
