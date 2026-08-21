@@ -61,22 +61,33 @@ model Address {
 // 2. CATALOG & INVENTORY
 // -----------------------------------------------------------------------
 model Product {
-  id           String   @id @default(uuid())
-  name         String
-  description  String
-  price        Float
-  images       String[]
-  category     String
-  fit          String?
-  isNew        Boolean  @default(true)
-  isBestSeller Boolean  @default(false)
-  stock        Int      @default(0)
-  sizes        String[]
-  colors       String[]
+  id               String   @id @default(uuid())
+  name             String
+  manufactureName  String?
+  description      String?
+  price            Float    @default(0)
+  userPrice        Float?
+  manufacturePrice Float?
+  images           String[]
+  coverPhoto       String?
+  category         String   @default("T-Shirts")
+  gender           String   @default("Unisex")
+  fit              String?
+  isNew            Boolean  @default(true)
+  isBestSeller     Boolean  @default(false)
+  stock            Int      @default(0)
+  inStock          Boolean  @default(true)
+  sizes            Json?
+  colors           Json?
+  sizeChart        String?
+  washCare         String?
+  shippingNote     String?
+  priceBreakdown   Json?
+  manufactureSpec  Json?
 
   // Relationships
   dropId       String?
-  drop         Drop?       @relation(fields: [dropId], references: [id])
+  drop         Drop?       @relation(fields: [dropId], references: [id], onDelete: SetNull)
   orderItems   OrderItem[]
   cartItems    CartItem[]
   reviews      Review[]
@@ -88,10 +99,14 @@ model Product {
 
 model Drop {
   id          String    @id @default(uuid())
-  title       String
-  products    Product[]
+  dropName    String?
+  title       String?
+  status      String    @default("Draft")
   isActive    Boolean   @default(true)
   releaseDate DateTime  @default(now())
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Review {

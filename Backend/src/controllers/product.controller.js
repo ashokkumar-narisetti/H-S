@@ -1,23 +1,25 @@
 import { prisma } from '../lib/prisma.js';
+import { sanitizeProductImageFields } from '../utils/imageHelper.js';
 
-// @desc    Get all products
-// @route   GET /api/products
+// @desc    Get all products with filters
+// @route   GET /api/products or /api/catalogue/products
 // @access  Public
 export const getProducts = async (req, res) => {
   try {
-    const { category, isBestSeller, dropId } = req.query;
+    const { category, isBestSeller, dropId, inStock } = req.query;
     
     // Build filter dynamically
     const filter = {};
-    if (category) filter.category = { equals: category, mode: 'insensitive' };
+    if (category && category !== 'All Categories') filter.category = { equals: category, mode: 'insensitive' };
     if (isBestSeller === 'true') filter.isBestSeller = true;
     if (dropId) filter.dropId = dropId;
+    if (inStock !== undefined) filter.inStock = inStock === 'true';
 
     const products = await prisma.product.findMany({
       where: filter,
       orderBy: { createdAt: 'desc' },
       include: {
-        drop: { select: { title: true } }
+        drop: { select: { title: true, dropName: true, status: true } }
       }
     });
 
@@ -28,15 +30,15 @@ export const getProducts = async (req, res) => {
   }
 };
 
-// @desc    Get single product
-// @route   GET /api/products/:id
+// @desc    Get single product by ID
+// @route   GET /api/products/:id or /api/catalogue/products/:id
 // @access  Public
 export const getProductById = async (req, res) => {
   try {
     const product = await prisma.product.findUnique({
       where: { id: req.params.id },
       include: {
-        drop: { select: { title: true } },
+        drop: { select: { title: true, dropName: true } },
         reviews: {
           include: {
             user: { select: { fullName: true } }
@@ -57,49 +59,75 @@ export const getProductById = async (req, res) => {
 };
 
 // @desc    Create a product
-// @route   POST /api/products
+// @route   POST /api/products or /api/catalogue/drops/:dropId/products
 // @access  Private/Admin
 export const createProduct = async (req, res) => {
   try {
+    const dropIdFromParams = req.params.dropId;
+    const body = sanitizeProductImageFields(req.body);
+
     const { 
-      name, description, price, images, category, 
-      fit, isNew, isBestSeller, stock, sizes, colors, dropId 
-    } = req.body;
+      name, manufactureName, description, price, userPrice, manufacturePrice,
+      images, coverPhoto, category, gender, fit, isNew, isBestSeller, stock, inStock,
+      sizes, colors, sizeChart, washCare, shippingNote, priceBreakdown, manufactureSpec, dropId
+    } = body;
+
+    const targetDropId = dropIdFromParams || dropId;
+    const finalPrice = price !== undefined ? parseFloat(price) : (userPrice ? parseFloat(userPrice) : 0);
+
+    const createPayload = {
+      name: name || 'Untitled Product',
+      manufactureName: manufactureName || null,
+      description: description || '',
+      price: finalPrice,
+      userPrice: userPrice ? parseFloat(userPrice) : finalPrice,
+      manufacturePrice: manufacturePrice ? parseFloat(manufacturePrice) : null,
+      images: Array.isArray(images) && images.length > 0 ? images : (coverPhoto ? [coverPhoto] : []),
+      coverPhoto: coverPhoto || (Array.isArray(images) && images[0] ? images[0] : ''),
+      category: category || 'T-Shirts',
+      gender: gender || 'Unisex',
+      fit: fit || null,
+      isNew: isNew === undefined ? true : isNew,
+      isBestSeller: isBestSeller || false,
+      stock: stock ? parseInt(stock) : 0,
+      inStock: inStock !== undefined ? inStock : true,
+      sizes: sizes || [],
+      colors: colors || [],
+      sizeChart: sizeChart || null,
+      washCare: washCare || null,
+      shippingNote: shippingNote || null,
+      priceBreakdown: priceBreakdown || null,
+      manufactureSpec: manufactureSpec || null,
+      dropId: targetDropId || null
+    };
+
+    console.log('PRISMA CREATE PAYLOAD KEYS:', Object.keys(createPayload));
+    console.log('PRISMA CREATE PAYLOAD FULL:', JSON.stringify(createPayload));
 
     const product = await prisma.product.create({
-      data: {
-        name,
-        description,
-        price: parseFloat(price),
-        images,
-        category,
-        fit,
-        isNew: isNew === undefined ? true : isNew,
-        isBestSeller: isBestSeller || false,
-        stock: parseInt(stock) || 0,
-        sizes,
-        colors,
-        dropId
-      },
+      data: createPayload
     });
 
     res.status(201).json(product);
   } catch (error) {
-    console.error('Error creating product:', error.message);
-    res.status(500).json({ message: 'Server error while creating product' });
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Server error while creating product', error: error.message });
   }
 };
 
 // @desc    Update a product
-// @route   PUT /api/products/:id
+// @route   PUT /api/products/:id or /api/catalogue/products/:id
 // @access  Private/Admin
 export const updateProduct = async (req, res) => {
   try {
     const productId = req.params.id;
+    const body = sanitizeProductImageFields(req.body);
+
     const { 
-      name, description, price, images, category, 
-      fit, isNew, isBestSeller, stock, sizes, colors, dropId 
-    } = req.body;
+      name, manufactureName, description, price, userPrice, manufacturePrice,
+      images, coverPhoto, category, gender, fit, isNew, isBestSeller, stock, inStock,
+      sizes, colors, sizeChart, washCare, shippingNote, priceBreakdown, manufactureSpec, dropId
+    } = body;
 
     const product = await prisma.product.findUnique({ where: { id: productId } });
 
@@ -110,30 +138,68 @@ export const updateProduct = async (req, res) => {
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: {
-        name,
-        description,
-        price: price ? parseFloat(price) : undefined,
-        images,
-        category,
-        fit,
-        isNew,
-        isBestSeller,
-        stock: stock ? parseInt(stock) : undefined,
-        sizes,
-        colors,
-        dropId
+        ...(name !== undefined && { name }),
+        ...(manufactureName !== undefined && { manufactureName }),
+        ...(description !== undefined && { description }),
+        ...(price !== undefined && { price: parseFloat(price) }),
+        ...(userPrice !== undefined && { userPrice: parseFloat(userPrice) }),
+        ...(manufacturePrice !== undefined && { manufacturePrice: parseFloat(manufacturePrice) }),
+        ...(images !== undefined && { images }),
+        ...(coverPhoto !== undefined && { coverPhoto }),
+        ...(category !== undefined && { category }),
+        ...(gender !== undefined && { gender }),
+        ...(fit !== undefined && { fit }),
+        ...(isNew !== undefined && { isNew }),
+        ...(isBestSeller !== undefined && { isBestSeller }),
+        ...(stock !== undefined && { stock: parseInt(stock) }),
+        ...(inStock !== undefined && { inStock }),
+        ...(sizes !== undefined && { sizes }),
+        ...(colors !== undefined && { colors }),
+        ...(sizeChart !== undefined && { sizeChart }),
+        ...(washCare !== undefined && { washCare }),
+        ...(shippingNote !== undefined && { shippingNote }),
+        ...(priceBreakdown !== undefined && { priceBreakdown }),
+        ...(manufactureSpec !== undefined && { manufactureSpec }),
+        ...(dropId !== undefined && { dropId })
       },
     });
 
     res.json(updatedProduct);
   } catch (error) {
-    console.error('Error updating product:', error.message);
-    res.status(500).json({ message: 'Server error while updating product' });
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Server error while updating product', error: error.message });
+  }
+};
+
+// @desc    Toggle product inStock availability
+// @route   PATCH /api/products/:id/stock or /api/catalogue/products/:id/stock
+// @access  Private/Admin
+export const toggleProductStock = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { inStock } = req.body;
+
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const updated = await prisma.product.update({
+      where: { id: productId },
+      data: {
+        inStock: inStock !== undefined ? inStock : !product.inStock
+      }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error toggling product stock:', error.message);
+    res.status(500).json({ message: 'Server error toggling product stock' });
   }
 };
 
 // @desc    Delete a product
-// @route   DELETE /api/products/:id
+// @route   DELETE /api/products/:id or /api/catalogue/products/:id
 // @access  Private/Admin
 export const deleteProduct = async (req, res) => {
   try {

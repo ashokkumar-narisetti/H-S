@@ -6,6 +6,7 @@ import {
   getProductById,
   createProduct,
   updateProduct,
+  toggleProductStock,
   deleteProduct
 } from '../controllers/product.controller.js';
 
@@ -18,6 +19,7 @@ router.get('/:id', getProductById);
 // Admin routes
 router.post('/', protectRoute, adminRoute, createProduct);
 router.put('/:id', protectRoute, adminRoute, updateProduct);
+router.patch('/:id/stock', protectRoute, adminRoute, toggleProductStock);
 router.delete('/:id', protectRoute, adminRoute, deleteProduct);
 
 export default router;
