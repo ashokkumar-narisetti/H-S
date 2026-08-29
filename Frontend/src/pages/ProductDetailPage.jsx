@@ -161,12 +161,15 @@ export default function ProductDetailPage() {
           <div className="mb-6">
             <h3 className="text-sm font-bold uppercase tracking-widest mb-4">Select Color</h3>
             <div className="flex flex-wrap gap-4">
-              {(product.colors || ['Default Color']).map(color => {
-                const hex = color.toLowerCase().includes('black') ? '#111' 
+              {(product.colors || ['Default Color']).map(colorObj => {
+                const color = typeof colorObj === 'string' ? colorObj : colorObj?.name || 'Default Color';
+                const hexValue = typeof colorObj === 'object' && colorObj?.hex ? colorObj.hex : null;
+                
+                const hex = hexValue || (color.toLowerCase().includes('black') ? '#111' 
                           : color.toLowerCase().includes('white') ? '#eee' 
                           : color.toLowerCase().includes('grey') || color.toLowerCase().includes('gray') ? '#999'
                           : color.toLowerCase().includes('olive') ? '#556b2f'
-                          : '#ccc';
+                          : '#ccc');
 
                 return (
                   <button

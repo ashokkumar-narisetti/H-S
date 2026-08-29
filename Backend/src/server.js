@@ -18,6 +18,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the proxy (Render, Vercel, Heroku) so Express correctly identifies HTTPS connections and allows secure cookies
+app.set('trust proxy', 1);
+
 // Middlewares - 100mb payload limit for storing base64 image URIs directly in database columns
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
