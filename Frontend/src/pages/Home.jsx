@@ -1,32 +1,25 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import HeroBanner from '../components/HeroBanner';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/products';
+import { useCatalogStore } from '../store/useCatalogStore';
 
 export default function Home() {
-  const bestSellers = products.filter(p => p.isBestSeller);
+  const { products, drops, isLoading, fetchProducts, fetchDrops } = useCatalogStore();
 
-  /**
-   * @BACKEND_TEAM - LATEST DROPS INTEGRATION:
-   * 1. Fetch the 5 most recent active product drops.
-   * 2. Map the data so each drop has a title and an array of products.
-   * 3. Drops should be ordered LIFO (Last In First Out). For example, if Drop 15 is the latest,
-   *    the response should be ordered: Drop 15, Drop 14, Drop 13, Drop 12, Drop 11.
-   * Expected payload structure:
-   * [
-   *   { dropId: 15, title: 'Drop 15', products: [ { id: 1, name: '...', ... }, ... ] },
-   *   ...
-   * ]
-   */
-  const latestDrops = [
-    { id: 15, title: 'Drop 15 / The Zenith Collection', products: products.slice(0, 4) },
-    { id: 14, title: 'Drop 14 / Urban Utility', products: products.slice(2, 6) },
-    { id: 13, title: 'Drop 13 / Midnight Series', products: products.slice(4, 8) },
-    { id: 12, title: 'Drop 12 / Essential Core', products: products.slice(6, 10) },
-    { id: 11, title: 'Drop 11 / The Origins', products: products.slice(8, 12) }
-  ];
+  useEffect(() => {
+    fetchProducts();
+    fetchDrops();
+  }, [fetchProducts, fetchDrops]);
+
+  const bestSellers = products.filter(p => p.isBestSeller).slice(0, 4);
+
+  // Filter drops to only show Live ones (or ones with products), limit to 5
+  const latestDrops = drops.filter(d => d.status === 'Live').slice(0, 5);
+
+
 
   const categories = [
     { name: 'T-Shirts', image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=800&auto=format&fit=crop', path: '/category/tshirts' },
@@ -58,16 +51,20 @@ export default function Home() {
           </div>
           
           <div className="space-y-16">
-            {latestDrops.map((drop) => (
-              <div key={drop.id}>
-                <h3 className="font-heading text-sm font-bold uppercase tracking-widest mb-6 border-b border-border/40 pb-2 text-muted-foreground">{drop.title}</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
-                  {drop.products.map(product => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
+            {isLoading ? (
+              <div className="text-center py-10 uppercase tracking-widest text-xs text-muted-foreground font-bold">Loading Drops...</div>
+            ) : (
+              latestDrops.map((drop) => (
+                <div key={drop.id}>
+                  <h3 className="font-heading text-sm font-bold uppercase tracking-widest mb-6 border-b border-border/40 pb-2 text-muted-foreground">{drop.title}</h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+                    {(drop.products || []).map(product => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -79,11 +76,15 @@ export default function Home() {
           <div className="w-16 h-1 bg-black"></div>
         </div>
         
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
-          {bestSellers.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-10 uppercase tracking-widest text-xs text-muted-foreground font-bold">Loading Products...</div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+            {bestSellers.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
      

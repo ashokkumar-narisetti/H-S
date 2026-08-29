@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ShoppingBag, Heart, Ruler, ChevronRight, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { products } from '../data/products';
+import { useCatalogStore } from '../store/useCatalogStore';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -39,10 +39,14 @@ const Accordion = ({ title, children, defaultOpen = false }) => {
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const product = products.find(p => p.id === id);
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const getProductById = useCatalogStore(state => state.getProductById);
+  const fetchProducts = useCatalogStore(state => state.fetchProducts);
+  const allProducts = useCatalogStore(state => state.products);
   
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -56,14 +60,34 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (product) {
-      setSelectedSize(product.sizes[0]);
-      setSelectedColor(product.colors?.[0] || 'Default');
-      setQuantity(1);
-      setIsAdded(false);
-      setShowRelated(false);
-    }
-  }, [product]);
+    const loadProduct = async () => {
+      setLoading(true);
+      try {
+        const data = await getProductById(id);
+        setProduct(data);
+        if (data) {
+          setSelectedSize(data.sizes?.[0] || '');
+          setSelectedColor(data.colors?.[0] || 'Default');
+          setQuantity(1);
+          setIsAdded(false);
+          setShowRelated(false);
+          // Fetch category products for 'related'
+          if (allProducts.length === 0) {
+            await fetchProducts();
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load product:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProduct();
+  }, [id, getProductById, fetchProducts, allProducts.length]);
+
+  if (loading) {
+    return <div className="pt-32 min-h-screen text-center uppercase tracking-widest font-bold text-muted-foreground text-sm">Loading Product...</div>;
+  }
 
   if (!product) {
     return (
@@ -84,7 +108,7 @@ export default function ProductDetailPage() {
     setTimeout(() => setIsAdded(false), 2000);
   };
 
-  const relatedProducts = products
+  const relatedProducts = allProducts
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
@@ -107,14 +131,14 @@ export default function ProductDetailPage() {
         {/* Cover Photo - Sticky Left */}
         <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-24 h-fit">
           <div className="aspect-[3/4] bg-muted w-full overflow-hidden rounded-2xl">
-            <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+            <img src={product.images?.[0] || 'https://via.placeholder.com/800'} alt={product.name} className="w-full h-full object-cover" />
           </div>
         </div>
 
         {/* Extra Images - Scrolling Middle */}
         <div className="lg:col-span-4 w-full">
           <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-4 snap-x no-scrollbar w-full">
-            {product.images.map((img, idx) => (
+            {(product.images || []).map((img, idx) => (
               <div 
                 key={idx} 
                 className={`aspect-[3/4] w-[85vw] sm:w-[60vw] lg:w-full flex-shrink-0 snap-center bg-muted overflow-hidden rounded-2xl ${idx === 0 ? 'lg:hidden' : ''}`}
@@ -173,7 +197,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
             <div className="grid grid-cols-4 gap-3">
-              {product.sizes.map(size => (
+              {(product.sizes || []).map(size => (
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
@@ -227,22 +251,21 @@ export default function ProductDetailPage() {
             </button>
           </div>
 
-          {/* @BACKEND_TEAM: Description, Washcare, Shipping, and Designer Note data should come from the API (e.g. `product.washcare`, `product.shipping_info`, `product.sizeChartUrl`). Currently using dummy data. */}
           <div className="mb-10">
             <Accordion title="Designer's Note">
-              <p>Conceived with a focus on structural integrity and silhouette, this piece bridges the gap between utilitarian design and contemporary streetwear. Every seam and stitch has been deliberately placed to enhance both form and longevity.</p>
+              <p>{product.shippingNote || "Conceived with a focus on structural integrity and silhouette, this piece bridges the gap between utilitarian design and contemporary streetwear."}</p>
             </Accordion>
             
             <Accordion title="Details & Description" defaultOpen={true}>
               <p>{product.description}</p>
               <ul className="mt-4 space-y-2 list-disc list-inside">
-                <li>Fit: {product.fit}</li>
-                <li>Material: Premium composition</li>
+                <li>Fit: {product.fit || 'Regular'}</li>
+                <li>Category: {product.category}</li>
               </ul>
             </Accordion>
             
             <Accordion title="Washcare">
-              <p>Machine wash cold with like colors. Tumble dry low or hang dry to preserve the print and fabric quality. Do not iron directly on the graphic.</p>
+              <p>{product.washCare || "Machine wash cold with like colors. Tumble dry low or hang dry to preserve the print and fabric quality. Do not iron directly on the graphic."}</p>
             </Accordion>
 
             <Accordion title="Shipping">
@@ -329,12 +352,8 @@ export default function ProductDetailPage() {
                 Close
               </button>
               <h2 className="font-heading text-3xl font-bold uppercase tracking-tight mb-6">Size Guide</h2>
-              {/* @BACKEND_TEAM: The size chart image URL should come from the API (e.g. `product.sizeChartUrl`). */}
               <div className="w-full bg-muted aspect-video relative flex items-center justify-center border border-border">
-                <img src="https://images.unsplash.com/photo-1620799140188-3b2a02fd9a77?q=80&w=1200&auto=format&fit=crop" alt="Size Chart" className="w-full h-full object-cover opacity-30 mix-blend-multiply" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                   <span className="font-bold uppercase tracking-widest text-lg border-2 border-black px-6 py-3 bg-white">Dummy Size Chart Image</span>
-                </div>
+                <img src={product.sizeChart || "https://images.unsplash.com/photo-1620799140188-3b2a02fd9a77?q=80&w=1200&auto=format&fit=crop"} alt="Size Chart" className="w-full h-full object-contain" />
               </div>
             </motion.div>
           </motion.div>

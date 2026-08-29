@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2, MapPin, Info } from 'lucide-react';
+import { axiosInstance } from '../lib/axios';
 
 export default function CheckoutPage() {
   const { cartItems, clearCart, updateQuantity, removeFromCart } = useCartStore();
@@ -34,10 +35,36 @@ export default function CheckoutPage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  
-  // Mock Address State
-  const [hasSavedAddress, setHasSavedAddress] = useState(true);
+  // Address State
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [isChangingAddress, setIsChangingAddress] = useState(false);
+
+  // New Address Form State
+  const [newAddress, setNewAddress] = useState({
+    firstName: '', lastName: '', street: '', apt: '', city: '', zipCode: ''
+  });
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const res = await axiosInstance.get('/addresses');
+        setAddresses(res.data);
+        const defaultAddr = res.data.find(a => a.isDefault) || res.data[0];
+        if (defaultAddr) {
+          setSelectedAddress(defaultAddr);
+        } else {
+          setIsChangingAddress(true); // Force them to enter/choose address
+        }
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    };
+    fetchAddresses();
+  }, []);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const gst = cartItems.reduce((sum, item) => {
@@ -47,16 +74,48 @@ export default function CheckoutPage() {
   const shipping = subtotal > 150 ? 0 : 10;
   const total = subtotal + gst + shipping;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
-    // Mock processing delay
-    setTimeout(() => {
+    
+    try {
+      const finalAddress = selectedAddress ? {
+        name: 'User',
+        street: selectedAddress.street,
+        city: selectedAddress.city,
+        state: selectedAddress.state,
+        zipCode: selectedAddress.zipCode,
+        country: selectedAddress.country
+      } : {
+        name: `${newAddress.firstName} ${newAddress.lastName}`,
+        street: `${newAddress.street} ${newAddress.apt}`,
+        city: newAddress.city,
+        zipCode: newAddress.zipCode,
+        country: 'India'
+      };
+
+      const orderData = {
+        orderItems: cartItems.map(item => ({
+          productId: item.id,
+          name: item.name,
+          size: item.size,
+          quantity: item.quantity,
+          color: item.color
+        })),
+        shippingAddress: finalAddress,
+        paymentMethod: 'COD' // Bypass mode
+      };
+
+      const res = await axiosInstance.post('/orders/checkout', orderData);
+      
       clearCart();
       setIsProcessing(false);
-      alert('Order Placed Successfully! (Mock)');
-      navigate('/');
-    }, 2000);
+      navigate(`/track/${res.data.id}`);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error.response?.data?.message || 'Error placing order');
+      setIsProcessing(false);
+    }
   };
 
   if (cartItems.length === 0) {
@@ -82,13 +141,13 @@ export default function CheckoutPage() {
           <div className="space-y-6 mb-8 lg:max-h-[820px] max-h-none sm:max-h-[60vh] overflow-y-auto pr-4">
             {cartItems.map(item => (
               <div key={`${item.id}-${item.size}`} className="flex gap-6 border-b border-border pb-6">
-                <div className="w-24 h-32 bg-muted relative flex-shrink-0">
+                <Link to={`/product/${item.id}`} className="w-24 h-32 bg-muted relative flex-shrink-0 hover:opacity-80 transition-opacity">
                   <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                </div>
+                </Link>
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-1">
-                      <p className="font-bold uppercase tracking-widest text-sm">{item.name}</p>
+                      <Link to={`/product/${item.id}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 line-clamp-1">{item.name}</Link>
                       <p className="font-bold">₹{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                     <p className="text-muted-foreground uppercase text-xs tracking-widest mb-2">Size: {item.size}</p>
@@ -136,7 +195,7 @@ export default function CheckoutPage() {
             <section>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="font-heading text-xl font-bold uppercase tracking-widest">Delivery Address</h2>
-                {hasSavedAddress && !isChangingAddress && (
+                {addresses.length > 0 && !isChangingAddress && (
                   <button 
                     type="button" 
                     onClick={() => setIsChangingAddress(true)}
@@ -147,34 +206,63 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {hasSavedAddress && !isChangingAddress ? (
+              {loadingAddresses ? (
+                <div className="border border-border p-6 bg-white text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Loading addresses...
+                </div>
+              ) : selectedAddress && !isChangingAddress ? (
                 <div className="border border-border p-6 bg-white relative">
                   <div className="flex items-start gap-4">
                     <MapPin className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />
                     <div>
-                      <p className="font-bold uppercase tracking-widest text-sm mb-2">John Doe</p>
+                      <p className="font-bold uppercase tracking-widest text-sm mb-2">{selectedAddress.street}</p>
                       <p className="text-muted-foreground text-xs leading-relaxed uppercase tracking-widest">
-                        123 Streetwear Ave, Apt 4B<br />
-                        New York, NY 10001<br />
-                        United States
+                        {selectedAddress.city}{selectedAddress.state ? `, ${selectedAddress.state}` : ''} {selectedAddress.zipCode}<br />
+                        {selectedAddress.country}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-6 border border-border">
-                  <input required type="text" placeholder="First Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
-                  <input required type="text" placeholder="Last Name" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
-                  <input required type="text" placeholder="Street Address" className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
-                  <input type="text" placeholder="Apartment (optional)" className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
-                  <input required type="text" placeholder="City" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
-                  <input required type="text" placeholder="Postal Code" className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
-                  {isChangingAddress && (
-                    <div className="col-span-2 flex gap-4 mt-2">
-                      <button type="button" onClick={() => setIsChangingAddress(false)} className="text-xs font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted">Cancel</button>
-                      <button type="button" onClick={() => { setHasSavedAddress(true); setIsChangingAddress(false); }} className="text-xs font-bold uppercase tracking-widest bg-black text-white px-4 py-2 hover:bg-black/80">Save & Use</button>
+                <div className="bg-white p-6 border border-border">
+                  {addresses.length > 0 && (
+                    <div className="mb-6 space-y-4 border-b border-border pb-6">
+                      <h3 className="text-sm font-bold uppercase tracking-widest">Select Saved Address</h3>
+                      {addresses.map(addr => (
+                        <label key={addr.id} className="flex items-start gap-4 p-4 border border-border cursor-pointer hover:bg-muted/30">
+                          <input 
+                            type="radio" 
+                            name="address" 
+                            checked={selectedAddress?.id === addr.id}
+                            onChange={() => { setSelectedAddress(addr); setIsChangingAddress(false); }}
+                            className="mt-1"
+                          />
+                          <div>
+                            <p className="font-bold uppercase tracking-widest text-xs mb-1">{addr.street}</p>
+                            <p className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                              {addr.city}, {addr.zipCode}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                      <p className="text-center font-bold uppercase tracking-widest text-xs py-2">- OR ADD NEW -</p>
                     </div>
                   )}
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input required={!selectedAddress} type="text" placeholder="First Name" value={newAddress.firstName} onChange={e => setNewAddress({...newAddress, firstName: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                    <input required={!selectedAddress} type="text" placeholder="Last Name" value={newAddress.lastName} onChange={e => setNewAddress({...newAddress, lastName: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                    <input required={!selectedAddress} type="text" placeholder="Street Address" value={newAddress.street} onChange={e => setNewAddress({...newAddress, street: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
+                    <input type="text" placeholder="Apartment (optional)" value={newAddress.apt} onChange={e => setNewAddress({...newAddress, apt: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
+                    <input required={!selectedAddress} type="text" placeholder="City" value={newAddress.city} onChange={e => setNewAddress({...newAddress, city: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                    <input required={!selectedAddress} type="text" placeholder="Postal Code" value={newAddress.zipCode} onChange={e => setNewAddress({...newAddress, zipCode: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                    
+                    {addresses.length > 0 && isChangingAddress && (
+                      <div className="col-span-2 flex gap-4 mt-2">
+                        <button type="button" onClick={() => setIsChangingAddress(false)} className="text-xs font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted w-full">Cancel</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </section>

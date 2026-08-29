@@ -9,6 +9,9 @@ import addressRoutes from './routes/address.routes.js';
 import productRoutes from './routes/product.routes.js';
 import dropRoutes from './routes/drop.routes.js';
 import catalogueRoutes from './routes/catalogue.routes.js';
+import orderRoutes from './routes/order.routes.js';
+import cartRoutes from './routes/cart.routes.js';
+import wishlistRoutes from './routes/wishlist.routes.js';
 
 dotenv.config();
 
@@ -46,6 +49,9 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/drops', dropRoutes);
 app.use('/api/catalogue', catalogueRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // Health check
 app.get('/', (req, res) => {

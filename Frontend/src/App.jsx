@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/useAuthStore';
+import { useCartStore } from './store/useCartStore';
+import { useWishlistStore } from './store/useWishlistStore';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
@@ -67,10 +69,21 @@ function AppContent() {
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const isCheckingAuth = useAuthStore((state) => state.isCheckingAuth);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  
+  const fetchCart = useCartStore((state) => state.fetchCart);
+  const fetchWishlist = useWishlistStore((state) => state.fetchWishlist);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCart();
+      fetchWishlist();
+    }
+  }, [isAuthenticated, fetchCart, fetchWishlist]);
 
   if (isCheckingAuth) {
     return (

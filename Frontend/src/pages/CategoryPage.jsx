@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Filter, ChevronDown } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/products';
+import { useCatalogStore } from '../store/useCatalogStore';
 
 export default function CategoryPage() {
   const { categoryName } = useParams();
@@ -11,6 +11,12 @@ export default function CategoryPage() {
   const [sortOption, setSortOption] = useState('newest');
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedFits, setSelectedFits] = useState([]);
+
+  const { products, isLoading, fetchProducts } = useCatalogStore();
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Available filter options based on mock data
   const sizes = ['S', 'M', 'L', 'XL', 'OS'];
@@ -164,7 +170,11 @@ export default function CategoryPage() {
 
         {/* Product Grid */}
         <div className="flex-1">
-          {filteredProducts.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-20">
+              <h2 className="font-heading text-2xl font-bold uppercase mb-4 text-muted-foreground">Loading Products...</h2>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-20">
               <h2 className="font-heading text-2xl font-bold uppercase mb-4">No Products Found</h2>
               <p className="text-muted-foreground uppercase text-sm tracking-widest">Try adjusting your filters</p>

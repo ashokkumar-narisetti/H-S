@@ -62,17 +62,17 @@ export default function CartDrawer() {
               ) : (
                 cartItems.map((item) => (
                   <div key={`${item.id}-${item.size}`} className="flex gap-4 border-b border-border/50 pb-6 last:border-0 last:pb-0">
-                    <div className="w-24 h-32 bg-muted flex-shrink-0">
+                    <Link to={`/product/${item.id}`} onClick={closeCart} className="w-24 h-32 bg-muted flex-shrink-0 hover:opacity-80 transition-opacity">
                       <img 
                         src={item.images[0]} 
                         alt={item.name} 
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                    </Link>
                     <div className="flex-1 flex flex-col">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-bold text-sm uppercase leading-tight">{item.name}</h4>
+                          <Link to={`/product/${item.id}`} onClick={closeCart} className="font-bold text-sm uppercase leading-tight hover:underline underline-offset-4 line-clamp-1">{item.name}</Link>
                           <p className="text-muted-foreground text-sm mt-1">Size: {item.size}</p>
                         </div>
                         <button 

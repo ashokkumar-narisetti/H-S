@@ -7,49 +7,51 @@
  */
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Check, Package, MapPin, ExternalLink, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { axiosInstance } from '../lib/axios';
 
 export default function TrackingDetailPage() {
   const { orderId } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Enriched Mock Data for a premium ecommerce feel
-  const orderDetails = {
-    id: orderId || 'ORD-0948',
-    date: 'October 25, 2023',
-    status: 'In Transit', // Active status
-    estimatedDelivery: 'Tomorrow by 8:00 PM',
-    shipper: 'Blue Dart',
-    trackingId: 'BD-982374982374',
-    trackingLink: 'https://bluedart.com',
-    address: {
-      name: 'Rahul Sharma',
-      street: '456 Fashion Street, Andheri West',
-      city: 'Mumbai, MH 400053',
-      country: 'India'
-    },
-    items: [
-      { id: 'hd-1', name: 'Oversized Heavyweight Hoodie', size: 'L', qty: 1, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=800&auto=format&fit=crop' }
-    ],
-    history: [
-      { date: 'Oct 26, 8:45 AM', location: 'Mumbai, MH', status: 'Out for delivery', completed: false, active: true },
-      { date: 'Oct 26, 6:30 AM', location: 'Mumbai, MH', status: 'Arrived at local sorting facility', completed: true, active: false },
-      { date: 'Oct 25, 11:20 PM', location: 'Pune, MH', status: 'Departed regional hub', completed: true, active: false },
-      { date: 'Oct 25, 4:00 PM', location: 'Warehouse', status: 'Package picked up by carrier', completed: true, active: false },
-      { date: 'Oct 25, 2:15 PM', location: 'Warehouse', status: 'Label created, awaiting carrier pickup', completed: true, active: false },
-      { date: 'Oct 25, 10:05 AM', location: 'Online', status: 'Order confirmed', completed: true, active: false }
-    ]
-  };
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await axiosInstance.get(`/orders/${orderId}`);
+        setOrder(res.data);
+      } catch (error) {
+        console.error('Error fetching order tracking:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (orderId) fetchOrder();
+  }, [orderId]);
+
+  if (loading) {
+    return <div className="pt-32 text-center text-muted-foreground uppercase tracking-widest font-bold text-sm">Loading Tracking Data...</div>;
+  }
+
+  if (!order) {
+    return <div className="pt-32 text-center text-red-500 uppercase tracking-widest font-bold text-sm">Order Not Found</div>;
+  }
+
+  const address = typeof order.shippingAddress === 'string' 
+    ? JSON.parse(order.shippingAddress) 
+    : order.shippingAddress;
 
   return (
     <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="mb-8">
-        <Link to="/track-orders" className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:text-muted-foreground transition-colors w-fit border-b border-black pb-0.5">
-          <ArrowLeft className="w-4 h-4" /> Back to Orders
+        <Link to="/" className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:text-muted-foreground transition-colors w-fit border-b border-black pb-0.5">
+          <ArrowLeft className="w-4 h-4" /> Back to Shop
         </Link>
       </div>
 
       <div className="flex justify-between items-end mb-8 border-b border-border pb-6">
         <h1 className="font-heading text-3xl uppercase font-bold tracking-tight">Order Tracking</h1>
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{orderDetails.id}</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{order.id.slice(-6)}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -65,30 +67,30 @@ export default function TrackingDetailPage() {
               {/* Background dotted line */}
               <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
               {/* Active solid line */}
-              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: '50%', marginTop: '-1px' }}></div>
+              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: order.status === 'DELIVERED' ? '100%' : '50%', marginTop: '-1px' }}></div>
               <div className="flex justify-between relative z-10">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
                     <Check className="w-4 h-4" />
                   </div>
                   <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">In Progress</p>
-                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">Oct 25, 10:05 AM</p>
+                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full border-4 border-black bg-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
-                    <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
+                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' || order.status === 'SHIPPING' ? 'border-black bg-black' : 'border-black bg-white'} flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]`}>
+                    {order.status === 'IN_PROGRESS' && <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>}
+                    {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && <Check className="w-4 h-4 text-white" />}
                   </div>
                   <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Shipping</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full border-4 border-border bg-white flex items-center justify-center">
+                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center`}>
+                    {order.status === 'DELIVERED' && <Check className="w-4 h-4 text-white" />}
                   </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center text-muted-foreground">Delivery</p>
-                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">Oct 28, 8:00 PM</p>
+                  <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${order.status !== 'DELIVERED' && 'text-muted-foreground'}`}>Delivery</p>
                 </div>
               </div>
             </div>
-
 
           </div>
         </div>
@@ -102,14 +104,14 @@ export default function TrackingDetailPage() {
               <Package className="w-4 h-4" /> Items in Shipment
             </h3>
             <div className="space-y-4">
-              {orderDetails.items.map((item, idx) => (
+              {order.items.map((item, idx) => (
                 <div key={idx} className="flex gap-4">
                   <div className="w-16 h-20 bg-muted relative flex-shrink-0">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    <img src={item.product?.images?.[0] || 'https://via.placeholder.com/150'} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
-                    <Link to={`/product/${item.id}`} className="font-bold uppercase tracking-widest text-xs hover:underline underline-offset-4 line-clamp-2">{item.name}</Link>
-                    <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} • Qty: {item.qty}</p>
+                    <Link to={`/product/${item.productId}`} className="font-bold uppercase tracking-widest text-xs hover:underline underline-offset-4 line-clamp-2">{item.name}</Link>
+                    <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} • Qty: {item.quantity}</p>
                   </div>
                 </div>
               ))}
@@ -122,10 +124,10 @@ export default function TrackingDetailPage() {
               <MapPin className="w-4 h-4" /> Delivery Address
             </h3>
             <div className="text-sm font-medium uppercase tracking-widest leading-relaxed text-muted-foreground">
-              <p className="text-black font-bold mb-2">{orderDetails.address.name}</p>
-              <p>{orderDetails.address.street}</p>
-              <p>{orderDetails.address.city}</p>
-              <p>{orderDetails.address.country}</p>
+              <p className="text-black font-bold mb-2">{address?.name}</p>
+              <p>{address?.street}</p>
+              <p>{address?.city}</p>
+              <p>{address?.country}</p>
             </div>
           </div>
 
