@@ -13,6 +13,19 @@ const safeParseInt = (val) => {
   return isNaN(parsed) ? null : parsed;
 };
 
+const ensureArray = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      // Fix common single quote JSON issues before parsing
+      return JSON.parse(val.replace(/'/g, '"'));
+    } catch (e) {
+      return [val]; // If it's just a single string like "S", make it an array
+    }
+  }
+  return val ? [val] : [];
+};
+
 // @desc    Get all products with filters
 // @route   GET /api/products or /api/catalogue/products
 // @access  Public
@@ -103,8 +116,8 @@ export const createProduct = async (req, res) => {
       isBestSeller: isBestSeller || false,
       stock: stock ? (safeParseInt(stock) ?? 0) : 0,
       inStock: inStock !== undefined ? inStock : true,
-      sizes: sizes || [],
-      colors: colors || [],
+      sizes: ensureArray(sizes),
+      colors: ensureArray(colors),
       sizeChart: sizeChart || null,
       washCare: washCare || null,
       shippingNote: shippingNote || null,
@@ -162,8 +175,8 @@ export const updateProduct = async (req, res) => {
         ...(isBestSeller !== undefined && { isBestSeller }),
         ...(stock !== undefined && { stock: safeParseInt(stock) ?? product.stock }),
         ...(inStock !== undefined && { inStock }),
-        ...(sizes !== undefined && { sizes }),
-        ...(colors !== undefined && { colors }),
+        ...(sizes !== undefined && { sizes: ensureArray(sizes) }),
+        ...(colors !== undefined && { colors: ensureArray(colors) }),
         ...(sizeChart !== undefined && { sizeChart }),
         ...(washCare !== undefined && { washCare }),
         ...(shippingNote !== undefined && { shippingNote }),
