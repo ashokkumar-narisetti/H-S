@@ -66,8 +66,8 @@ export default function ProductDetailPage() {
         const data = await getProductById(id);
         setProduct(data);
         if (data) {
-          setSelectedSize(data.sizes?.[0] || '');
-          setSelectedColor(data.colors?.[0] || 'Default');
+          setSelectedSize(typeof data.sizes?.[0] === 'string' ? data.sizes[0] : data.sizes?.[0]?.size || '');
+          setSelectedColor(typeof data.colors?.[0] === 'string' ? data.colors[0] : data.colors?.[0]?.name || 'Default');
           setQuantity(1);
           setIsAdded(false);
           setShowRelated(false);
@@ -200,19 +200,25 @@ export default function ProductDetailPage() {
               </button>
             </div>
             <div className="grid grid-cols-4 gap-3">
-              {(product.sizes || []).map(size => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`py-3 border text-sm font-bold uppercase transition-colors ${
-                    selectedSize === size 
-                      ? 'bg-foreground text-background border-foreground' 
-                      : 'bg-background text-foreground border-border hover:border-foreground'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
+              {(product.sizes || []).map(sizeObj => {
+                const sizeStr = typeof sizeObj === 'string' ? sizeObj : sizeObj?.size || 'N/A';
+                const isAvailable = typeof sizeObj === 'object' && sizeObj.hasOwnProperty('isAvailable') ? sizeObj.isAvailable : true;
+                
+                return (
+                  <button
+                    key={sizeStr}
+                    onClick={() => setSelectedSize(sizeStr)}
+                    disabled={!isAvailable}
+                    className={`py-3 border text-sm font-bold uppercase transition-colors ${
+                      selectedSize === sizeStr 
+                        ? 'bg-foreground text-background border-foreground' 
+                        : 'bg-background text-foreground border-border hover:border-foreground'
+                    } ${!isAvailable ? 'opacity-30 cursor-not-allowed hover:border-border' : ''}`}
+                  >
+                    {sizeStr}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
