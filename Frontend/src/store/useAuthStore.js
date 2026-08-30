@@ -14,6 +14,7 @@ export const useAuthStore = create((set) => ({
       const res = await axiosInstance.get('/auth/check');
       set({ user: res.data, isAuthenticated: true });
     } catch (error) {
+      localStorage.removeItem('hs_auth_token');
       set({ user: null, isAuthenticated: false });
       console.log('Error checking auth', error);
     } finally {
@@ -25,6 +26,7 @@ export const useAuthStore = create((set) => ({
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post('/auth/register', data);
+      localStorage.setItem('hs_auth_token', res.data.token);
       set({ user: res.data, isAuthenticated: true });
       toast.success('Account created successfully!');
     } catch (error) {
@@ -40,6 +42,7 @@ export const useAuthStore = create((set) => ({
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post('/auth/login', data);
+      localStorage.setItem('hs_auth_token', res.data.token);
       set({ user: res.data, isAuthenticated: true });
       toast.success('Welcome back!');
     } catch (error) {
@@ -54,6 +57,7 @@ export const useAuthStore = create((set) => ({
   logout: async () => {
     try {
       await axiosInstance.post('/auth/logout');
+      localStorage.removeItem('hs_auth_token');
       set({ user: null, isAuthenticated: false });
       toast.success('Logged out successfully');
     } catch (error) {
