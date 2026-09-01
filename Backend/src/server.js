@@ -12,6 +12,7 @@ import catalogueRoutes from './routes/catalogue.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import cartRoutes from './routes/cart.routes.js';
 import wishlistRoutes from './routes/wishlist.routes.js';
+import walletRoutes from './routes/wallet.routes.js';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ app.use('/api/catalogue', catalogueRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // Health check
 app.get('/', (req, res) => {

@@ -70,6 +70,7 @@ export const register = async (req, res) => {
         username: newUser.username,
         email: newUser.email,
         role: newUser.role,
+        companyName: newUser.companyName,
       };
 
       res.status(201).json({
@@ -90,22 +91,42 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Missing email or password' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
+      return res.status(400).json({ success: false, message: 'Invalid credentials. User not found.' });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
     if (!isPasswordCorrect) {
-      return res.status(400).json({ success: false, message: 'Invalid credentials' });
+      return res.status(400).json({ success: false, message: 'Invalid credentials. Incorrect password.' });
+    }
+
+    // Role-specific check if role is passed in body
+    if (role) {
+      const requestedRoleUpper = role.toUpperCase();
+      const userRoleUpper = (user.role || '').toUpperCase();
+
+      if (requestedRoleUpper === 'MANUFACTURER' && userRoleUpper !== 'MANUFACTURER' && userRoleUpper !== 'ADMIN') {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. Account '${user.email}' is not registered as a Manufacturer.`
+        });
+      }
+
+      if (requestedRoleUpper === 'ADMIN' && userRoleUpper !== 'ADMIN') {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. Account '${user.email}' is not an Admin.`
+        });
+      }
     }
 
     const token = generateToken(user.id, res);
@@ -116,6 +137,7 @@ export const login = async (req, res) => {
       username: user.username,
       email: user.email,
       role: user.role,
+      companyName: user.companyName,
     };
 
     res.status(200).json({
@@ -151,6 +173,7 @@ export const checkAuth = async (req, res) => {
         username: true,
         email: true,
         role: true,
+        companyName: true,
       }
     });
 

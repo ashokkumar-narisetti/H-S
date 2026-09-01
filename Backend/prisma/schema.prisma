@@ -10,6 +10,12 @@ datasource db {
 // -----------------------------------------------------------------------
 // 1. USER & AUTHENTICATION
 // -----------------------------------------------------------------------
+enum Role {
+  USER
+  ADMIN
+  MANUFACTURER
+}
+
 model User {
   id          String    @id @default(uuid())
   fullName    String
@@ -17,6 +23,7 @@ model User {
   email       String    @unique
   password    String
   role        Role      @default(USER)
+  companyName String?
   status      String    @default("Active")
   mobile      String?
   countryCode String?
@@ -36,13 +43,12 @@ model User {
   cart      Cart?
   wishlist  Product[] @relation("UserWishlist")
 
+  // Manufacturer relationships
+  manufacturerOrders   Order[]   @relation("ManufacturerAssignedOrders")
+  manufacturerProducts Product[] @relation("ManufacturerProducts")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-enum Role {
-  USER
-  ADMIN
 }
 
 model Address {
@@ -86,12 +92,14 @@ model Product {
   manufactureSpec  Json?
 
   // Relationships
-  dropId       String?
-  drop         Drop?       @relation(fields: [dropId], references: [id], onDelete: SetNull)
-  orderItems   OrderItem[]
-  cartItems    CartItem[]
-  reviews      Review[]
-  wishlistedBy User[]      @relation("UserWishlist")
+  dropId         String?
+  drop           Drop?       @relation(fields: [dropId], references: [id], onDelete: SetNull)
+  manufacturerId String?
+  manufacturer   User?       @relation("ManufacturerProducts", fields: [manufacturerId], references: [id], onDelete: SetNull)
+  orderItems     OrderItem[]
+  cartItems      CartItem[]
+  reviews        Review[]
+  wishlistedBy   User[]      @relation("UserWishlist")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -146,10 +154,12 @@ model CartItem {
 // 4. ORDERS & CHECKOUT
 // -----------------------------------------------------------------------
 model Order {
-  id     String      @id @default(uuid())
-  userId String
-  user   User        @relation(fields: [userId], references: [id])
-  items  OrderItem[]
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  manufacturerId String?
+  manufacturer   User?       @relation("ManufacturerAssignedOrders", fields: [manufacturerId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
 
   // Financials
   taxPrice      Float @default(0)
