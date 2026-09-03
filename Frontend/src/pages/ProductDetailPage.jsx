@@ -261,27 +261,35 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="mb-10">
-            <Accordion title="Designer's Note">
-              <p>{product.shippingNote || "Conceived with a focus on structural integrity and silhouette, this piece bridges the gap between utilitarian design and contemporary streetwear."}</p>
-            </Accordion>
+            {product.designerNote && (
+              <Accordion title="Designer's Note">
+                <p className="whitespace-pre-line">{product.designerNote}</p>
+              </Accordion>
+            )}
             
-            <Accordion title="Details & Description" defaultOpen={true}>
-              <p>{product.description}</p>
-              <ul className="mt-4 space-y-2 list-disc list-inside">
-                <li>Fit: {product.fit || 'Regular'}</li>
-                <li>Category: {product.category}</li>
-              </ul>
-            </Accordion>
+            {product.description && (
+              <Accordion title="Details & Description" defaultOpen={true}>
+                <p className="whitespace-pre-line">{product.description}</p>
+                {(product.fit || product.category) && (
+                  <ul className="mt-4 space-y-2 list-disc list-inside">
+                    {product.fit && <li>Fit: {product.fit}</li>}
+                    {product.category && <li>Category: {product.category}</li>}
+                  </ul>
+                )}
+              </Accordion>
+            )}
             
-            <Accordion title="Washcare">
-              <p>{product.washCare || "Machine wash cold with like colors. Tumble dry low or hang dry to preserve the print and fabric quality. Do not iron directly on the graphic."}</p>
-            </Accordion>
+            {product.washCare && (
+              <Accordion title="Washcare">
+                <p className="whitespace-pre-line">{product.washCare}</p>
+              </Accordion>
+            )}
 
-            <Accordion title="Shipping">
-              <p>Packed within 24 hours.</p>
-              <p>Free delivery pan-India.</p>
-              <p>Dispatches next day.</p>
-            </Accordion>
+            {product.shippingNote && (
+              <Accordion title="Shipping">
+                <p className="whitespace-pre-line">{product.shippingNote}</p>
+              </Accordion>
+            )}
             <div className="border-t border-border"></div>
           </div>
         </div>

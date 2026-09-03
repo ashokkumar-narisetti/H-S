@@ -88,6 +88,7 @@ model Product {
   sizeChart        String?
   washCare         String?
   shippingNote     String?
+  designerNote     String?
   priceBreakdown   Json?
   manufactureSpec  Json?
 

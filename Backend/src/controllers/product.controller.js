@@ -94,7 +94,7 @@ export const createProduct = async (req, res) => {
     const { 
       name, manufactureName, description, price, userPrice, manufacturePrice,
       images, coverPhoto, category, gender, fit, isNew, isBestSeller, stock, inStock,
-      sizes, colors, sizeChart, washCare, shippingNote, priceBreakdown, manufactureSpec, dropId
+      sizes, colors, sizeChart, washCare, shippingNote, designerNote, priceBreakdown, manufactureSpec, dropId
     } = body;
 
     const targetDropId = dropIdFromParams || dropId;
@@ -121,6 +121,7 @@ export const createProduct = async (req, res) => {
       sizeChart: sizeChart || null,
       washCare: washCare || null,
       shippingNote: shippingNote || null,
+      designerNote: designerNote || null,
       priceBreakdown: priceBreakdown || null,
       manufactureSpec: manufactureSpec || null,
       dropId: targetDropId || null
@@ -148,7 +149,7 @@ export const updateProduct = async (req, res) => {
     const { 
       name, manufactureName, description, price, userPrice, manufacturePrice,
       images, coverPhoto, category, gender, fit, isNew, isBestSeller, stock, inStock,
-      sizes, colors, sizeChart, washCare, shippingNote, priceBreakdown, manufactureSpec, dropId
+      sizes, colors, sizeChart, washCare, shippingNote, designerNote, priceBreakdown, manufactureSpec, dropId
     } = body;
 
     const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -180,6 +181,7 @@ export const updateProduct = async (req, res) => {
         ...(sizeChart !== undefined && { sizeChart }),
         ...(washCare !== undefined && { washCare }),
         ...(shippingNote !== undefined && { shippingNote }),
+        ...(designerNote !== undefined && { designerNote }),
         ...(priceBreakdown !== undefined && { priceBreakdown }),
         ...(manufactureSpec !== undefined && { manufactureSpec }),
         ...(dropId !== undefined && { dropId })
