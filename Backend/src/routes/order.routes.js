@@ -7,7 +7,10 @@ import {
   completeOrder,
   cancelOrder,
   requestPriceAdjustment,
+  respondToPriceAdjustment,
   requestOrderCancellation,
+  respondToCancelRequest,
+  updateMfgPaymentStatus,
   getOrderById,
   getMyOrders
 } from '../controllers/order.controller.js';
@@ -25,9 +28,19 @@ router.get('/myorders', getMyOrders);
 router.put('/:id/ship', shipOrder);
 router.patch('/:id/complete', completeOrder);
 router.patch('/:id/cancel', cancelOrder);
-router.post('/:id/price-adjustment', requestPriceAdjustment);
-router.post('/:id/cancel-request', requestOrderCancellation);
 
-router.get('/:id', getOrderById); // Note: Make sure :id is last so it doesn't catch named routes
+// Price adjustment routes (Manufacturer requests, Admin responds)
+router.post('/:id/price-adjustment', requestPriceAdjustment);
+router.patch('/:id/price-adjustment', respondToPriceAdjustment);
+
+// Cancellation request routes (Manufacturer requests, Admin responds)
+router.post('/:id/cancel-request', requestOrderCancellation);
+router.patch('/:id/cancel-request', respondToCancelRequest);
+
+// Manufacturer payment payout status (Admin updates)
+router.patch('/:id/mfg-payment-status', updateMfgPaymentStatus);
+
+// Specific order details (Keep :id at the bottom)
+router.get('/:id', getOrderById);
 
 export default router;

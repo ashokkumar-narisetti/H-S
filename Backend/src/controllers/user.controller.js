@@ -243,3 +243,36 @@ export const deleteUser = async (req, res) => {
   }
 };
 
+// @desc    Get all manufacturers (for admin dropdown assignment)
+// @route   GET /api/users/manufacturers
+// @access  Private
+export const getManufacturers = async (req, res) => {
+  try {
+    const manufacturers = await prisma.user.findMany({
+      where: { role: 'MANUFACTURER' },
+      select: {
+        id: true,
+        fullName: true,
+        companyName: true,
+        email: true,
+        status: true
+      },
+      orderBy: { fullName: 'asc' }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Manufacturers fetched successfully',
+      data: manufacturers
+    });
+  } catch (error) {
+    console.error('Error fetching manufacturers:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while fetching manufacturers',
+      data: null,
+      errors: [error.message]
+    });
+  }
+};
+

@@ -8,12 +8,14 @@ import {
   createUser,
   updateUserStatus,
   updateUserDetails,
-  deleteUser
+  deleteUser,
+  getManufacturers
 } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
 router.get('/', protectRoute, adminRoute, getAllUsers);
+router.get('/manufacturers', protectRoute, getManufacturers);
 router.post('/', protectRoute, adminRoute, createUser);
 router.get('/profile', protectRoute, getUserProfile);
 router.put('/profile', protectRoute, updateUserProfile);

@@ -13,6 +13,10 @@ import orderRoutes from './routes/order.routes.js';
 import cartRoutes from './routes/cart.routes.js';
 import wishlistRoutes from './routes/wishlist.routes.js';
 import walletRoutes from './routes/wallet.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import couponRoutes from './routes/coupon.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
+import { initCustomTables } from './services/dbInit.service.js';
 
 dotenv.config();
 
@@ -57,6 +61,12 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/coupons', couponRoutes);
+app.use('/api/settings', settingsRoutes);
+
+// Initialize PostgreSQL custom tables in background
+initCustomTables();
 
 // Health check
 app.get('/', (req, res) => {
