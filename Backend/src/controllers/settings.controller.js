@@ -21,6 +21,20 @@ const defaultStoreSettings = {
   phone: '+91 98765 43210'
 };
 
+export const getTaxSettingsHelper = async () => {
+  try {
+    await initCustomTables();
+    const taxRow = await prisma.$queryRawUnsafe(`SELECT "value" FROM "Setting" WHERE "key" = 'tax'`);
+    if (taxRow.length > 0 && taxRow[0].value) {
+      const parsed = typeof taxRow[0].value === 'string' ? JSON.parse(taxRow[0].value) : taxRow[0].value;
+      return { ...defaultTaxSettings, ...parsed };
+    }
+  } catch (err) {
+    console.error('Error fetching tax settings helper:', err);
+  }
+  return defaultTaxSettings;
+};
+
 // @desc    Get system settings
 // @route   GET /api/settings
 // @access  Private/Admin
@@ -46,6 +60,24 @@ export const getSettings = async (req, res) => {
   } catch (error) {
     console.error('Error getting settings:', error.message);
     res.status(500).json({ success: false, message: 'Failed to retrieve settings from database' });
+  }
+};
+
+// @desc    Get public settings (Tax rules for frontend checkout)
+// @route   GET /api/settings/public
+// @access  Public
+export const getPublicSettings = async (req, res) => {
+  try {
+    const taxSettings = await getTaxSettingsHelper();
+    res.json({
+      success: true,
+      data: {
+        taxSettings
+      }
+    });
+  } catch (error) {
+    console.error('Error getting public settings:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve public settings' });
   }
 };
 

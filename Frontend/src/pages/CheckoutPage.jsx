@@ -66,11 +66,38 @@ export default function CheckoutPage() {
     fetchAddresses();
   }, []);
 
+  // Tax Settings State
+  const [taxSettings, setTaxSettings] = useState({
+    enableGst: true,
+    indianThreshold: 2500,
+    indianLowRate: 5,
+    indianHighRate: 18
+  });
+
+  useEffect(() => {
+    const fetchTaxSettings = async () => {
+      try {
+        const res = await axiosInstance.get('/settings/public');
+        if (res.data?.data?.taxSettings) {
+          setTaxSettings(res.data.data.taxSettings);
+        }
+      } catch (error) {
+        console.error('Error fetching tax settings:', error);
+      }
+    };
+    fetchTaxSettings();
+  }, []);
+
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
   const gst = cartItems.reduce((sum, item) => {
-    const rate = item.price > 2500 ? 0.18 : 0.05;
+    if (!taxSettings.enableGst) return sum;
+    const rate = item.price > taxSettings.indianThreshold 
+      ? (taxSettings.indianHighRate / 100) 
+      : (taxSettings.indianLowRate / 100);
     return sum + (item.price * item.quantity * rate);
   }, 0);
+  
   const shipping = subtotal > 150 ? 0 : 10;
   const total = subtotal + gst + shipping;
 
@@ -288,7 +315,10 @@ export default function CheckoutPage() {
                     {showGstInfo && (
                       <div className="absolute top-6 left-0 bg-white border border-black p-3 text-[10px] uppercase font-bold tracking-widest z-10 shadow-lg w-48 text-black">
                         <p className="mb-2 border-b border-border pb-1">GST Rates</p>
-                        <p className="text-muted-foreground leading-relaxed">Item {'>'} ₹2500: 18%<br/>Item {'<'} ₹2500: 5%</p>
+                        <p className="text-muted-foreground leading-relaxed">
+                          Item {'>'} ₹{taxSettings.indianThreshold}: {taxSettings.indianHighRate}%<br/>
+                          Item {'<='} ₹{taxSettings.indianThreshold}: {taxSettings.indianLowRate}%
+                        </p>
                       </div>
                     )}
                   </div>

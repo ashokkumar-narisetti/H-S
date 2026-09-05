@@ -3,12 +3,17 @@ import { protectRoute } from '../middleware/auth.middleware.js';
 import { adminRoute } from '../middleware/admin.middleware.js';
 import {
   getSettings,
+  getPublicSettings,
   updateTaxSettings,
   updateStoreSettings
 } from '../controllers/settings.controller.js';
 
 const router = express.Router();
 
+// Public routes
+router.get('/public', getPublicSettings);
+
+// Protected Admin routes
 router.use(protectRoute);
 router.use(adminRoute);
 

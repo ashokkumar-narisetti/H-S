@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { getTaxSettingsHelper } from '../controllers/settings.controller.js';
 
 export const mapDbStatusToUi = (dbStatus) => {
   switch (dbStatus) {
@@ -288,7 +289,22 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
     });
   }
 
-  const taxPrice = itemsPrice > 2500 ? itemsPrice * 0.18 : itemsPrice * 0.05;
+  const taxSettings = await getTaxSettingsHelper();
+  let taxPrice = 0;
+  if (taxSettings.enableGst) {
+    // We assume checkout orders are currently all domestic/India since shipping logic is simple
+    // A more advanced integration would check if shippingAddress.country === 'India'
+    const isIndianBuyer = true; 
+    
+    if (isIndianBuyer) {
+      taxPrice = itemsPrice > taxSettings.indianThreshold 
+        ? itemsPrice * (taxSettings.indianHighRate / 100) 
+        : itemsPrice * (taxSettings.indianLowRate / 100);
+    } else {
+      taxPrice = itemsPrice * (taxSettings.nonIndianRate / 100);
+    }
+  }
+
   const shippingPrice = itemsPrice > 150 ? 0 : 10;
   const totalPrice = itemsPrice + taxPrice + shippingPrice;
   const mfgPayment = Math.round(totalPrice * 0.6);
