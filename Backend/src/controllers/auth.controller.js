@@ -19,10 +19,10 @@ const generateToken = (userId, res) => {
 
 export const register = async (req, res) => {
   try {
-    const { fullName, username, email, password, mobile, countryCode, country, gender, dob } = req.body;
+    const { fullName, email, password, mobile, countryCode, country, gender, dob } = req.body;
 
     // Validate inputs
-    if (!fullName || !username || !email || !password) {
+    if (!fullName || !email || !password) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -36,11 +36,6 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'Email is already in use' });
     }
 
-    const existingUsername = await prisma.user.findUnique({ where: { username } });
-    if (existingUsername) {
-      return res.status(400).json({ message: 'Username is already taken' });
-    }
-
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -49,7 +44,6 @@ export const register = async (req, res) => {
     const newUser = await prisma.user.create({
       data: {
         fullName,
-        username,
         email,
         password: hashedPassword,
         mobile,
@@ -67,7 +61,6 @@ export const register = async (req, res) => {
       const userObj = {
         id: newUser.id,
         fullName: newUser.fullName,
-        username: newUser.username,
         email: newUser.email,
         role: newUser.role,
         companyName: newUser.companyName,
@@ -134,7 +127,6 @@ export const login = async (req, res) => {
     const userObj = {
       id: user.id,
       fullName: user.fullName,
-      username: user.username,
       email: user.email,
       role: user.role,
       companyName: user.companyName,
@@ -170,7 +162,6 @@ export const checkAuth = async (req, res) => {
       select: {
         id: true,
         fullName: true,
-        username: true,
         email: true,
         role: true,
         companyName: true,

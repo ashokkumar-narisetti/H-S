@@ -21,7 +21,6 @@ export default function AccountProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
     fullName: '',
-    username: '',
     email: '',
     mobile: '',
     gender: '',
@@ -40,7 +39,6 @@ export default function AccountProfile() {
         const formattedDob = data.dob ? new Date(data.dob).toISOString().split('T')[0] : '';
         setProfile({
           fullName: data.fullName || '',
-          username: data.username || '',
           email: data.email || '',
           mobile: data.mobile || '',
           gender: data.gender || '',
@@ -94,7 +92,9 @@ export default function AccountProfile() {
 
   return (
     <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
-      <h1 className="font-heading text-4xl font-bold uppercase tracking-tight mb-12 border-b border-border pb-6">My Account</h1>
+      <h1 className="font-heading text-4xl font-bold uppercase tracking-tight mb-12 border-b border-border pb-6">
+        Welcome {profile.fullName ? profile.fullName.split(' ')[0] : ''}
+      </h1>
       
       <div className="max-w-3xl mx-auto space-y-12">
         <section>
@@ -113,14 +113,6 @@ export default function AccountProfile() {
                 <input name="fullName" value={profile.fullName} onChange={handleChange} className="w-full font-bold border border-border p-3 focus:outline-none focus:border-foreground" />
               ) : (
                 <p className="font-bold border border-border p-3 bg-muted/20">{profile.fullName}</p>
-              )}
-            </div>
-            <div className="md:col-span-6">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Username</p>
-              {isEditing ? (
-                <input name="username" value={profile.username} onChange={handleChange} className="w-full font-bold border border-border p-3 focus:outline-none focus:border-foreground" />
-              ) : (
-                <p className="font-bold border border-border p-3 bg-muted/20">@{profile.username}</p>
               )}
             </div>
             <div className="md:col-span-6">

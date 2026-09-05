@@ -126,7 +126,6 @@ export default function AuthPage() {
         }
         await signup({
           fullName: data.fullName,
-          username: data.username,
           email: data.email,
           country,
           countryCode,
@@ -172,7 +171,6 @@ export default function AuthPage() {
         ) : (
           <>
             <input required type="text" name="fullName" placeholder="Full Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="text" name="username" placeholder="Username" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             <input required type="email" name="email" placeholder="Email Address (Gmail preferred)" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             
             <CountrySelect value={country} onChange={setCountry} />

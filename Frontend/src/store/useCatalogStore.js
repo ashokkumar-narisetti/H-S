@@ -7,8 +7,22 @@ const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 export const useCatalogStore = create((set, get) => ({
   products: [],
   drops: [],
+  categories: [],
   isLoading: false,
   error: null,
+
+  fetchCategories: async () => {
+    try {
+      if (USE_MOCK_DATA) {
+        set({ categories: ['T-Shirts', 'Hoodies', 'Sweatshirts', 'Shorts', 'Sweatpants'] });
+      } else {
+        const res = await axiosInstance.get('/catalogue/categories');
+        set({ categories: res.data });
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  },
 
   fetchProducts: async (filters = {}) => {
     set({ isLoading: true, error: null });

@@ -14,10 +14,14 @@ export default function Home() {
     fetchDrops();
   }, [fetchProducts, fetchDrops]);
 
-  const bestSellers = products.filter(p => p.isBestSeller).slice(0, 4);
+  // Prioritize best sellers, but fallback to regular products to ensure grid is never empty
+  const bestSellers = products.filter(p => p.isBestSeller);
+  const displayBestSellers = [...bestSellers, ...products.filter(p => !p.isBestSeller)].slice(0, 4);
 
-  // Filter drops to only show Live ones (or ones with products), limit to 5
-  const latestDrops = drops.filter(d => d.status === 'Live').slice(0, 5);
+  // Prioritize 'Live' drops, fallback to active drops, then fallback to any drops
+  let latestDrops = drops.filter(d => d.status?.toLowerCase() === 'live' || d.isActive);
+  if (latestDrops.length === 0) latestDrops = drops;
+  latestDrops = latestDrops.slice(0, 5);
 
 
 
@@ -80,7 +84,7 @@ export default function Home() {
           <div className="text-center py-10 uppercase tracking-widest text-xs text-muted-foreground font-bold">Loading Products...</div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
-            {bestSellers.map(product => (
+            {displayBestSellers.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

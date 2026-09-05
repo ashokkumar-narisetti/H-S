@@ -18,9 +18,28 @@ export default function CategoryPage() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Available filter options based on mock data
-  const sizes = ['S', 'M', 'L', 'XL', 'OS'];
-  const fits = ['Oversized', 'Regular', 'Slim', 'One Size'];
+  // Extract unique sizes from all loaded products
+  const sizes = useMemo(() => {
+    const allSizes = new Set();
+    products.forEach(p => {
+      if (Array.isArray(p.sizes)) {
+        p.sizes.forEach(sizeObj => {
+          const sizeStr = typeof sizeObj === 'string' ? sizeObj : sizeObj?.size;
+          if (sizeStr) allSizes.add(sizeStr);
+        });
+      }
+    });
+    return Array.from(allSizes).sort();
+  }, [products]);
+
+  // Extract unique fits from all loaded products
+  const fits = useMemo(() => {
+    const allFits = new Set();
+    products.forEach(p => {
+      if (p.fit) allFits.add(p.fit);
+    });
+    return Array.from(allFits).sort();
+  }, [products]);
 
   // Filter and Sort Logic
   const filteredProducts = useMemo(() => {
@@ -28,7 +47,9 @@ export default function CategoryPage() {
 
     // Filter by Category
     if (categoryName && categoryName !== 'new-arrivals' && categoryName !== 'best-sellers') {
-      result = result.filter(p => p.category === categoryName);
+      // Decode URI component just in case it has spaces or special chars
+      const decodedCategory = decodeURIComponent(categoryName).toLowerCase();
+      result = result.filter(p => p.category?.toLowerCase() === decodedCategory);
     } else if (categoryName === 'new-arrivals') {
       result = result.filter(p => p.isNew);
     } else if (categoryName === 'best-sellers') {
@@ -37,7 +58,12 @@ export default function CategoryPage() {
 
     // Filter by Sizes
     if (selectedSizes.length > 0) {
-      result = result.filter(p => p.sizes.some(size => selectedSizes.includes(size)));
+      result = result.filter(p => 
+        Array.isArray(p.sizes) && p.sizes.some(sizeObj => {
+          const sizeStr = typeof sizeObj === 'string' ? sizeObj : sizeObj?.size;
+          return selectedSizes.includes(sizeStr);
+        })
+      );
     }
 
     // Filter by Fit
@@ -76,7 +102,7 @@ export default function CategoryPage() {
   };
 
   const categoryTitle = categoryName 
-    ? categoryName.replace('-', ' ') 
+    ? decodeURIComponent(categoryName).replace('-', ' ') 
     : 'All Products';
 
   return (

@@ -1,3 +1,5 @@
+import { prisma } from '../lib/prisma.js';
+
 // @desc    Upload product photo, mockup image, or design file
 // @route   POST /api/catalogue/upload or /api/products/upload
 // @access  Private/Admin
@@ -24,7 +26,25 @@ export const uploadImage = async (req, res) => {
 // @route   GET /api/catalogue/categories
 // @access  Public
 export const getCategories = async (req, res) => {
-  res.json(['T-Shirts', 'Hoodies', 'Pants', 'Accessories', 'Shorts']);
+  try {
+    const products = await prisma.product.findMany({
+      select: {
+        category: true,
+      },
+      distinct: ['category'],
+    });
+    
+    // Extract category strings and remove nulls/empty, sort alphabetically
+    const categories = products
+      .map(p => p.category)
+      .filter(c => c && c.trim() !== '')
+      .sort();
+      
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ message: 'Failed to fetch categories' });
+  }
 };
 
 // @desc    Get print type options

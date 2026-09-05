@@ -3,6 +3,7 @@ import { User, ChevronDown, Home, Menu, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { useCatalogStore } from '../store/useCatalogStore';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,6 +15,12 @@ export default function Navbar() {
   const profileRef = useRef(null);
   const location = useLocation();
   const { isAuthenticated, logout, user } = useAuthStore();
+  const { categories: storeCategories, fetchCategories } = useCatalogStore();
+
+  // Fetch categories on mount
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   // Handle scroll effect
   useEffect(() => {
@@ -45,13 +52,10 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const categories = [
-    { name: 'T-Shirts', path: '/category/tshirts' },
-    { name: 'Hoodies', path: '/category/hoodies' },
-    { name: 'Sweatshirts', path: '/category/sweatshirts' },
-    { name: 'Shorts', path: '/category/shorts' },
-    { name: 'Sweatpants', path: '/category/sweatpants' }
-  ];
+  const categories = storeCategories.map(cat => ({
+    name: cat,
+    path: `/category/${cat}` // Generates /category/T-Shirts, /category/Hoodies, etc.
+  }));
 
   const profileLinks = [
     { name: 'Profile', path: '/account' },
@@ -158,7 +162,7 @@ export default function Navbar() {
                   >
                     <div className="px-6 py-3 border-b border-border/50 mb-2">
                       <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                        {isAuthenticated ? `Welcome, @${user?.username || 'user'}` : 'My Account'}
+                        {isAuthenticated ? `Welcome ${user?.fullName ? user.fullName.split(' ')[0] : ''}` : 'My Account'}
                       </p>
                     </div>
                     {isAuthenticated ? (
