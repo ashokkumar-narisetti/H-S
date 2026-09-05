@@ -14,9 +14,8 @@ export default function Home() {
     fetchDrops();
   }, [fetchProducts, fetchDrops]);
 
-  // Prioritize best sellers, but fallback to regular products to ensure grid is never empty
-  const bestSellers = products.filter(p => p.isBestSeller);
-  const displayBestSellers = [...bestSellers, ...products.filter(p => !p.isBestSeller)].slice(0, 4);
+  // Strictly show products marked as best sellers
+  const displayBestSellers = products.filter(p => p.isBestSeller).slice(0, 4);
 
   // Prioritize 'Live' drops, fallback to active drops, then fallback to any drops
   let latestDrops = drops.filter(d => d.status?.toLowerCase() === 'live' || d.isActive);
