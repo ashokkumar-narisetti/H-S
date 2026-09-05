@@ -112,6 +112,10 @@ export default function ProductDetailPage() {
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
+  const allImages = product.coverPhoto 
+    ? [product.coverPhoto, ...(product.images || []).filter(img => img !== product.coverPhoto)] 
+    : (product.images || ['https://via.placeholder.com/800']);
+
   return (
     <div className="pt-24 pb-20 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
       
@@ -130,20 +134,34 @@ export default function ProductDetailPage() {
         
         {/* Cover Photo - Sticky Left */}
         <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-24 h-fit">
-          <div className="aspect-[3/4] bg-muted w-full overflow-hidden rounded-2xl">
-            <img src={product.images?.[0] || 'https://via.placeholder.com/800'} alt={product.name} className="w-full h-full object-cover" />
+          <div className="aspect-[3/4] bg-muted w-full overflow-hidden rounded-2xl relative">
+            <img src={allImages[0]} alt={product.name} className={`w-full h-full object-cover ${!product.inStock ? 'opacity-70 grayscale' : ''}`} />
+            {!product.inStock && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <span className="bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm rotate-[-12deg] shadow-xl border-2 border-white">
+                  Sold Out
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Extra Images - Scrolling Middle */}
         <div className="lg:col-span-4 w-full">
           <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-4 snap-x no-scrollbar w-full">
-            {(product.images || []).map((img, idx) => (
+            {allImages.map((img, idx) => (
               <div 
                 key={idx} 
-                className={`aspect-[3/4] w-[85vw] sm:w-[60vw] lg:w-full flex-shrink-0 snap-center bg-muted overflow-hidden rounded-2xl ${idx === 0 ? 'lg:hidden' : ''}`}
+                className={`aspect-[3/4] w-[85vw] sm:w-[60vw] lg:w-full flex-shrink-0 snap-center bg-muted overflow-hidden rounded-2xl relative ${idx === 0 ? 'lg:hidden' : ''}`}
               >
-                <img src={img} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover" />
+                <img src={img} alt={`${product.name} ${idx + 1}`} className={`w-full h-full object-cover ${!product.inStock ? 'opacity-70 grayscale' : ''}`} />
+                {!product.inStock && idx === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <span className="bg-black text-white px-8 py-3 font-bold uppercase tracking-widest text-sm rotate-[-12deg] shadow-xl border-2 border-white">
+                      Sold Out
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -231,14 +249,17 @@ export default function ProductDetailPage() {
             
             <button 
               onClick={handleAddToCart}
+              disabled={!product.inStock}
               className={`flex-1 py-4 font-bold uppercase text-sm tracking-widest flex items-center justify-center gap-2 transition-all duration-300 ${
-                isAdded 
-                  ? 'bg-green-600 text-white border-green-600' 
-                  : 'bg-foreground text-background border-foreground hover:bg-white hover:text-black hover:border-black border-2'
+                !product.inStock 
+                  ? 'bg-muted text-muted-foreground border-muted cursor-not-allowed'
+                  : isAdded 
+                    ? 'bg-green-600 text-white border-green-600' 
+                    : 'bg-foreground text-background border-foreground hover:bg-white hover:text-black hover:border-black border-2'
               }`}
             >
               <ShoppingBag className="w-5 h-5" />
-              {isAdded ? 'Added to Cart' : 'Add to Cart'}
+              {!product.inStock ? 'Sold Out' : isAdded ? 'Added to Cart' : 'Add to Cart'}
             </button>
 
             <button 

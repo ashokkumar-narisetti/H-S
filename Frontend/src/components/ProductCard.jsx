@@ -63,11 +63,11 @@ export default function ProductCard({ product }) {
       {/* Image Container */}
       <div className="relative aspect-[3/4] bg-muted overflow-hidden mb-4 rounded-3xl">
         <img 
-          src={product.images[0]} 
+          src={product.coverPhoto || (product.images && product.images[0]) || ''} 
           alt={product.name}
-          className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? 'scale-105' : 'scale-100'}`}
+          className={`w-full h-full object-cover transition-transform duration-700 ${isHovered && product.inStock ? 'scale-105' : 'scale-100'} ${!product.inStock ? 'opacity-70 grayscale' : ''}`}
         />
-        {product.images[1] && (
+        {product.images && product.images[1] && product.inStock && (
           <img 
             src={product.images[1]} 
             alt={`${product.name} alternate`}
@@ -75,16 +75,27 @@ export default function ProductCard({ product }) {
           />
         )}
         
+        {/* Sold Out Overlay */}
+        {!product.inStock && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <span className="bg-black text-white px-6 py-2 font-bold uppercase tracking-widest text-xs rotate-[-12deg] shadow-xl border-2 border-white">
+              Sold Out
+            </span>
+          </div>
+        )}
+
         {/* Quick Add Overlay */}
-        <div className={`absolute bottom-0 left-0 w-full p-4 transition-transform duration-300 ${isHovered ? 'translate-y-0' : 'translate-y-full'}`}>
-          <button 
-            onClick={handleAddToCart}
-            className="w-full bg-black text-white py-3 font-bold uppercase text-xs tracking-widest hover:bg-white hover:text-black border-2 border-black transition-colors flex items-center justify-center gap-2"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            Quick Add
-          </button>
-        </div>
+        {product.inStock && (
+          <div className={`absolute bottom-0 left-0 w-full p-4 transition-transform duration-300 ${isHovered ? 'translate-y-0' : 'translate-y-full'} z-20`}>
+            <button 
+              onClick={handleAddToCart}
+              className="w-full bg-black text-white py-3 font-bold uppercase text-xs tracking-widest hover:bg-white hover:text-black border-2 border-black transition-colors flex items-center justify-center gap-2"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Quick Add
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Details */}
