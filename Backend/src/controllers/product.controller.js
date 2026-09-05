@@ -40,6 +40,18 @@ export const getProducts = async (req, res) => {
     if (dropId) filter.dropId = dropId;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
 
+    // Hide orphaned products and products in Draft drops from the public frontend
+    if (req.query.all !== 'true') {
+      filter.drop = {
+        isNot: null
+      };
+      filter.OR = [
+        { drop: { status: 'Live' } },
+        { drop: { status: 'live' } },
+        { drop: { isActive: true } }
+      ];
+    }
+
     const products = await prisma.product.findMany({
       where: filter,
       orderBy: { createdAt: 'desc' },

@@ -17,10 +17,8 @@ export default function Home() {
   // Strictly show products marked as best sellers
   const displayBestSellers = products.filter(p => p.isBestSeller).slice(0, 4);
 
-  // Prioritize 'Live' drops, fallback to active drops, then fallback to any drops
-  let latestDrops = drops.filter(d => d.status?.toLowerCase() === 'live' || d.isActive);
-  if (latestDrops.length === 0) latestDrops = drops;
-  latestDrops = latestDrops.slice(0, 5);
+  // Strictly show 'Live' or active drops
+  const latestDrops = drops.filter(d => d.status?.toLowerCase() === 'live' || d.isActive).slice(0, 5);
 
 
 
