@@ -12,7 +12,6 @@ export const getUserProfile = async (req, res) => {
       select: {
         id: true,
         fullName: true,
-        username: true,
         email: true,
         mobile: true,
         countryCode: true,
@@ -78,7 +77,6 @@ export const updateUserProfile = async (req, res) => {
         select: {
           id: true,
           fullName: true,
-          username: true,
           email: true,
           mobile: true,
           countryCode: true,
@@ -109,7 +107,6 @@ export const getAllUsers = async (req, res) => {
       select: {
         id: true,
         fullName: true,
-        username: true,
         email: true,
         mobile: true,
         countryCode: true,
@@ -143,20 +140,18 @@ export const getAllUsers = async (req, res) => {
 // @access  Private/Admin
 export const createUser = async (req, res) => {
   try {
-    const { username, fullName, fullname, email, mobile, phone, country, gender, age, shippingAddress } = req.body;
+    const { fullName, fullname, email, mobile, phone, country, gender, age, shippingAddress } = req.body;
 
     const existingEmail = await prisma.user.findUnique({ where: { email } });
     if (existingEmail) {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    const nameToUse = fullName || fullname || username || 'New User';
-    const userNameToUse = username || email.split('@')[0] || `user_${Date.now()}`;
+    const nameToUse = fullName || fullname || 'New User';
 
     const newUser = await prisma.user.create({
       data: {
         fullName: nameToUse,
-        username: userNameToUse,
         email,
         password: '$2a$10$defaultDummyHashedPasswordForAdminCreatedUsers',
         mobile: mobile || phone,
@@ -168,7 +163,6 @@ export const createUser = async (req, res) => {
 
     res.status(201).json({
       id: newUser.id,
-      username: newUser.username,
       fullname: newUser.fullName,
       email: newUser.email,
       phone: newUser.mobile,
