@@ -39,6 +39,44 @@ export const formatOrderForUi = (order) => {
   const user = order.user || {};
   const manufacturer = order.manufacturer || null;
 
+  // Parse shippingAddress if it is a JSON string
+  let formattedAddress = order.shippingAddress || 'Customer Address';
+  let recipientName = user.fullName || user.username || '';
+  let recipientPhone = user.mobile || '';
+  let recipientCountry = user.country || '';
+
+  if (typeof order.shippingAddress === 'string') {
+    const trimmed = order.shippingAddress.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.name && parsed.name !== 'User') {
+            recipientName = parsed.name;
+          }
+          if (parsed.phone) {
+            recipientPhone = parsed.phone;
+          }
+          if (parsed.country) {
+            recipientCountry = parsed.country;
+          }
+          const parts = [
+            parsed.street,
+            parsed.city,
+            parsed.state,
+            parsed.zipCode,
+            parsed.country
+          ].filter(Boolean);
+          if (parts.length > 0) {
+            formattedAddress = parts.join(', ');
+          }
+        }
+      } catch (e) {
+        // Fallback to raw string
+      }
+    }
+  }
+
   // Resolve best front and back image
   let frontImg = product.images?.[0] || product.coverPhoto;
   let backImg = product.images?.[1] || product.images?.[0] || product.coverPhoto;
@@ -62,6 +100,26 @@ export const formatOrderForUi = (order) => {
     backImg = 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80';
   }
 
+  // Resolve accurate manufacturer payment from DB or calculate from product catalog manufacturePrice
+  let resolvedMfgPayment = (typeof order.mfgPayment === 'number' && order.mfgPayment > 0)
+    ? order.mfgPayment
+    : 0;
+
+  if (resolvedMfgPayment === 0 && Array.isArray(order.items) && order.items.length > 0) {
+    let computedMfg = 0;
+    for (const it of order.items) {
+      const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
+        ? it.product.manufacturePrice
+        : Math.round((it.price || it.product?.price || 0) * 0.6);
+      computedMfg += unitMfg * (it.quantity || 1);
+    }
+    resolvedMfgPayment = computedMfg;
+  }
+
+  if (resolvedMfgPayment === 0) {
+    resolvedMfgPayment = Math.round((order.totalPrice || 100) * 0.6);
+  }
+
   return {
     id: order.id,
     orderedDate: order.createdAt
@@ -71,13 +129,13 @@ export const formatOrderForUi = (order) => {
     mfgItemName: product.manufactureName || firstItem.name || 'MFG Athletic Product',
     size: firstItem.size || 'L',
     color: firstItem.color || 'Standard',
-    orderedBy: user.id || order.userId || 'USR-1001',
-    fullName: user.fullName || 'Customer',
-    phone: user.mobile || '+1 555-000-1122',
-    country: user.country || 'United States',
-    shippingAddress: order.shippingAddress || 'Customer Address',
+    orderedBy: user.id || order.userId || '',
+    fullName: recipientName || user.fullName || user.username || 'Customer',
+    phone: recipientPhone || user.mobile || 'N/A',
+    country: recipientCountry || user.country || 'India',
+    shippingAddress: formattedAddress,
     amountPaid: order.totalPrice || 0,
-    mfgPayment: order.mfgPayment || Math.round((order.totalPrice || 100) * 0.6),
+    mfgPayment: resolvedMfgPayment,
     manufacturerId: order.manufacturerId || null,
     manufacturerName: manufacturer ? (manufacturer.companyName || manufacturer.fullName) : null,
     shipperName: order.shipperName || 'None',
@@ -132,7 +190,6 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
   } = orderData;
 
   const validAmountPaid = Number(amountPaid) || 0;
-  const validMfgPayment = Number(mfgPayment) || Math.round(validAmountPaid * 0.6);
   const trimmedItemName = (itemName || 'Custom Product').trim();
   const trimmedMfgItemName = (mfgItemName || `MFG ${trimmedItemName}`).trim();
 
@@ -142,6 +199,15 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       name: { equals: trimmedItemName, mode: 'insensitive' }
     }
   });
+
+  const parsedMfgPayment = Number(mfgPayment);
+  let validMfgPayment = (parsedMfgPayment > 0) ? parsedMfgPayment : 0;
+  if (!validMfgPayment && product && typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
+    validMfgPayment = product.manufacturePrice;
+  }
+  if (!validMfgPayment) {
+    validMfgPayment = Math.round(validAmountPaid * 0.6);
+  }
 
   if (!product) {
     product = await prisma.product.create({
@@ -160,10 +226,11 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
   }
 
   // 2. Resolve Customer User ID
-  let targetUserId = creatorUserId;
+  let targetUserId = null;
   if (orderedBy && orderedBy.trim()) {
+    const trimmedOrderedBy = orderedBy.trim();
     const existingUserById = await prisma.user.findUnique({
-      where: { id: orderedBy.trim() }
+      where: { id: trimmedOrderedBy }
     });
     if (existingUserById) {
       targetUserId = existingUserById.id;
@@ -171,8 +238,9 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       const existingUserByName = await prisma.user.findFirst({
         where: {
           OR: [
-            { username: orderedBy.trim() },
-            { email: orderedBy.trim() }
+            { username: { equals: trimmedOrderedBy, mode: 'insensitive' } },
+            { email: { equals: trimmedOrderedBy, mode: 'insensitive' } },
+            { fullName: { equals: trimmedOrderedBy, mode: 'insensitive' } }
           ]
         }
       });
@@ -182,10 +250,42 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
     }
   }
 
+  // If still not matched, check if customer fullName or phone matches
+  if (!targetUserId && fullName && fullName.trim()) {
+    const trimmedName = fullName.trim();
+    const matchedUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { fullName: { equals: trimmedName, mode: 'insensitive' } },
+          { username: { equals: trimmedName, mode: 'insensitive' } }
+        ]
+      }
+    });
+    if (matchedUser) {
+      targetUserId = matchedUser.id;
+    }
+  }
+
+  if (!targetUserId && phone && phone.trim()) {
+    const matchedByPhone = await prisma.user.findFirst({
+      where: {
+        mobile: { contains: phone.trim() }
+      }
+    });
+    if (matchedByPhone) {
+      targetUserId = matchedByPhone.id;
+    }
+  }
+
+  // If still not resolved, assign to a customer with role 'USER' rather than Admin
   if (!targetUserId) {
-    const fallbackUser = await prisma.user.findFirst();
-    if (fallbackUser) {
-      targetUserId = fallbackUser.id;
+    const customerUser = await prisma.user.findFirst({
+      where: { role: 'USER' }
+    });
+    if (customerUser) {
+      targetUserId = customerUser.id;
+    } else {
+      targetUserId = creatorUserId;
     }
   }
 
@@ -268,6 +368,7 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
  */
 export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMethod, userId) => {
   let itemsPrice = 0;
+  let totalMfgPayment = 0;
   const itemsToCreate = [];
 
   for (const item of orderItems) {
@@ -278,6 +379,12 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
 
     const itemTotal = product.price * item.quantity;
     itemsPrice += itemTotal;
+
+    // Calculate manufacturer price for this item using catalog manufacturePrice
+    const unitMfgPrice = (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
+      ? product.manufacturePrice
+      : Math.round(product.price * 0.6);
+    totalMfgPayment += unitMfgPrice * item.quantity;
 
     itemsToCreate.push({
       productId: product.id,
@@ -307,7 +414,7 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
 
   const shippingPrice = itemsPrice > 150 ? 0 : 10;
   const totalPrice = itemsPrice + taxPrice + shippingPrice;
-  const mfgPayment = Math.round(totalPrice * 0.6);
+  const mfgPayment = totalMfgPayment;
   const paymentStatus = paymentMethod === 'COD' ? 'PENDING' : 'SUCCESSFUL';
 
   const order = await prisma.order.create({

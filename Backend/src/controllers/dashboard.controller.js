@@ -45,7 +45,18 @@ export const getDashboardStats = async (req, res) => {
 
     orders.forEach(order => {
       const price = Number(order.totalPrice) || 0;
-      const mfgPay = Number(order.mfgPayment) || Math.round(price * 0.6);
+      let mfgPay = Number(order.mfgPayment) || 0;
+      if (mfgPay === 0 && Array.isArray(order.items) && order.items.length > 0) {
+        mfgPay = order.items.reduce((acc, it) => {
+          const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
+            ? it.product.manufacturePrice
+            : Math.round((it.price || it.product?.price || 0) * 0.6);
+          return acc + unitMfg * (it.quantity || 1);
+        }, 0);
+      }
+      if (mfgPay === 0) {
+        mfgPay = Math.round(price * 0.6);
+      }
       totalRevenue += price;
       walletBalance += Math.max(0, price - mfgPay);
 

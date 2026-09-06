@@ -26,6 +26,24 @@ const findOrderByIdOrTxn = async (txnOrOrderId) => {
   return order;
 };
 
+// Helper to compute accurate mfg payment from order record or catalog manufacturePrice
+const computeOrderMfgPayment = (order) => {
+  if (typeof order.mfgPayment === 'number' && order.mfgPayment > 0) {
+    return order.mfgPayment;
+  }
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    let computed = 0;
+    for (const it of order.items) {
+      const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
+        ? it.product.manufacturePrice
+        : Math.round((it.price || it.product?.price || 0) * 0.6);
+      computed += unitMfg * (it.quantity || 1);
+    }
+    if (computed > 0) return computed;
+  }
+  return Math.round((Number(order.totalPrice) || 100) * 0.6);
+};
+
 // ==========================================
 // MANUFACTURER WALLET ENDPOINTS
 // ==========================================
@@ -47,12 +65,10 @@ export const getMfgWalletMetrics = async (req, res) => {
 
     const orders = await prisma.order.findMany({
       where: whereClause,
-      select: {
-        totalPrice: true,
-        mfgPayment: true,
-        mfgPaymentStatus: true,
-        priceAdjustmentAmount: true,
-        priceAdjustmentStatus: true
+      include: {
+        items: {
+          include: { product: true }
+        }
       }
     });
 
@@ -62,7 +78,7 @@ export const getMfgWalletMetrics = async (req, res) => {
     let paidPayouts = 0;
 
     orders.forEach(order => {
-      const payment = order.mfgPayment || Math.round((order.totalPrice || 100) * 0.6);
+      const payment = computeOrderMfgPayment(order);
       lifetimeEarnings += payment;
 
       if (order.priceAdjustmentStatus === 'Approved' && order.priceAdjustmentAmount) {
@@ -108,11 +124,7 @@ export const getMfgWalletEarnings = async (req, res) => {
       where: whereClause,
       include: {
         items: {
-          select: {
-            name: true,
-            size: true,
-            color: true
-          }
+          include: { product: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -120,7 +132,7 @@ export const getMfgWalletEarnings = async (req, res) => {
 
     const earnings = orders.map((order, idx) => {
       const firstItem = order.items?.[0] || {};
-      const payment = order.mfgPayment || Math.round((order.totalPrice || 100) * 0.6);
+      const payment = computeOrderMfgPayment(order);
       const isAdjusted = Boolean(order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);
 
       return {
@@ -155,10 +167,10 @@ export const getMfgWalletEarnings = async (req, res) => {
 export const getAdminWalletMetrics = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
-      select: {
-        totalPrice: true,
-        mfgPayment: true,
-        mfgPaymentStatus: true
+      include: {
+        items: {
+          include: { product: true }
+        }
       }
     });
 
@@ -169,7 +181,7 @@ export const getAdminWalletMetrics = async (req, res) => {
 
     orders.forEach(order => {
       const sale = Number(order.totalPrice) || 0;
-      const mfgPay = Number(order.mfgPayment) || Math.round(sale * 0.6);
+      const mfgPay = computeOrderMfgPayment(order);
 
       grossRevenue += sale;
       manufactureEarnings += mfgPay;
@@ -203,6 +215,9 @@ export const getAdminWalletTransactions = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
+        items: {
+          include: { product: true }
+        },
         user: { select: { fullName: true, username: true } },
         manufacturer: { select: { companyName: true, fullName: true } }
       },
@@ -211,7 +226,7 @@ export const getAdminWalletTransactions = async (req, res) => {
 
     const transactions = orders.map(order => {
       const grossSale = Number(order.totalPrice) || 0;
-      const mfgPay = Number(order.mfgPayment) || Math.round(grossSale * 0.6);
+      const mfgPay = computeOrderMfgPayment(order);
       const isAdjusted = Boolean(
         order.priceAdjustmentStatus === 'Approved' ||
         (order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0)
