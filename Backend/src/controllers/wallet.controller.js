@@ -5,7 +5,7 @@ const findOrderByIdOrTxn = async (txnOrOrderId) => {
   let order = await prisma.order.findUnique({
     where: { id: txnOrOrderId },
     include: {
-      user: { select: { fullName: true, username: true } },
+      user: { select: { fullName: true, email: true } },
       manufacturer: { select: { companyName: true, fullName: true } }
     }
   });
@@ -17,7 +17,7 @@ const findOrderByIdOrTxn = async (txnOrOrderId) => {
         id: { startsWith: rawIdPrefix, mode: 'insensitive' }
       },
       include: {
-        user: { select: { fullName: true, username: true } },
+        user: { select: { fullName: true, email: true } },
         manufacturer: { select: { companyName: true, fullName: true } }
       }
     });
@@ -92,12 +92,19 @@ export const getMfgWalletMetrics = async (req, res) => {
       }
     });
 
+    const metricsData = {
+      walletBalance: Number(paidPayouts.toFixed(2)),
+      lifetimeEarnings: Number(lifetimeEarnings.toFixed(2)),
+      approvedAdjustmentsTotal: Number(approvedAdjustmentsTotal.toFixed(2)),
+      pendingPayouts: Number(pendingPayouts.toFixed(2)),
+      paidPayouts: Number(paidPayouts.toFixed(2))
+    };
+
     res.json({
-      walletBalance: paidPayouts,
-      lifetimeEarnings,
-      approvedAdjustmentsTotal,
-      pendingPayouts,
-      paidPayouts
+      success: true,
+      message: 'Manufacturer wallet metrics retrieved successfully',
+      data: metricsData,
+      ...metricsData
     });
   } catch (error) {
     console.error('Error computing mfg wallet metrics:', error.message);
@@ -195,12 +202,19 @@ export const getAdminWalletMetrics = async (req, res) => {
 
     const ourEarnings = Number((grossRevenue - manufactureEarnings).toFixed(2));
 
-    res.json({
+    const metricsData = {
       grossRevenue: Number(grossRevenue.toFixed(2)),
       manufactureEarnings: Number(manufactureEarnings.toFixed(2)),
       paidToManufacture: Number(paidToManufacture.toFixed(2)),
       pendingPayoutToManufacture: Number(pendingPayoutToManufacture.toFixed(2)),
       ourEarnings
+    };
+
+    res.json({
+      success: true,
+      message: 'Admin wallet metrics retrieved successfully',
+      data: metricsData,
+      ...metricsData
     });
   } catch (error) {
     console.error('Error computing admin wallet metrics:', error.message);
@@ -218,7 +232,7 @@ export const getAdminWalletTransactions = async (req, res) => {
         items: {
           include: { product: true }
         },
-        user: { select: { fullName: true, username: true } },
+        user: { select: { fullName: true, email: true } },
         manufacturer: { select: { companyName: true, fullName: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -235,7 +249,7 @@ export const getAdminWalletTransactions = async (req, res) => {
       return {
         id: `TXN-${order.id.slice(0, 8).toUpperCase()}`,
         orderId: order.id,
-        customerName: order.user?.fullName || order.user?.username || 'Customer',
+        customerName: order.user?.fullName || order.user?.email || 'Customer',
         manufacturerName: order.manufacturer?.companyName || order.manufacturer?.fullName || 'Unassigned',
         grossSaleValue: grossSale,
         manufacturerPayment: mfgPay,

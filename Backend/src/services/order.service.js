@@ -33,6 +33,128 @@ export const mapUiStatusToDb = (uiStatus) => {
   }
 };
 
+/**
+ * Resolves color-specific assets (mockups, DTF/DTG design file, print specs, neck tag)
+ * for an ordered product color.
+ */
+export const resolveColorAssets = (product, orderColor) => {
+  const normalizedOrderColor = (orderColor || '').trim().toLowerCase();
+
+  let matchedColor = null;
+  if (Array.isArray(product?.colors) && normalizedOrderColor) {
+    matchedColor = product.colors.find(c => {
+      if (!c) return false;
+      if (typeof c === 'string') return c.trim().toLowerCase() === normalizedOrderColor;
+      const cName = (c.name || '').trim().toLowerCase();
+      const cCode = (c.code || '').trim().toLowerCase();
+      return (
+        cName === normalizedOrderColor ||
+        cCode === normalizedOrderColor ||
+        (cName && normalizedOrderColor && (cName.includes(normalizedOrderColor) || normalizedOrderColor.includes(cName)))
+      );
+    });
+  }
+
+  // Determine light/dark garment for neck tag & contrast
+  const isLight =
+    normalizedOrderColor.includes('white') ||
+    normalizedOrderColor.includes('cream') ||
+    normalizedOrderColor.includes('light') ||
+    normalizedOrderColor.includes('yellow') ||
+    normalizedOrderColor.includes('beige') ||
+    normalizedOrderColor.includes('sand');
+
+  const neckLogoFileName = isLight ? 'neck logo black.png' : 'neck logo white.png';
+
+  // Front View Image (prioritize color-specific front mockup, then model photo, then images)
+  let frontImg = '';
+  if (matchedColor && typeof matchedColor === 'object') {
+    frontImg =
+      matchedColor.frontView ||
+      matchedColor.modelPhoto1 ||
+      (Array.isArray(matchedColor.modelPhotos) && matchedColor.modelPhotos[0]) ||
+      (Array.isArray(matchedColor.images) && matchedColor.images[0]) ||
+      matchedColor.image ||
+      '';
+  }
+
+  // Back View Image (prioritize color-specific back mockup, then model photo 2, then images)
+  let backImg = '';
+  if (matchedColor && typeof matchedColor === 'object') {
+    backImg =
+      matchedColor.backView ||
+      matchedColor.modelPhoto2 ||
+      (Array.isArray(matchedColor.modelPhotos) && matchedColor.modelPhotos[1]) ||
+      (Array.isArray(matchedColor.images) && matchedColor.images[1]) ||
+      '';
+  }
+
+  // Design File (Artwork for print placement, e.g. DTF/DTG file)
+  let designFile = '';
+  if (matchedColor && typeof matchedColor === 'object' && matchedColor.designFile) {
+    designFile = matchedColor.designFile;
+  } else if (product?.manufactureSpec?.designFile) {
+    designFile = product.manufactureSpec.designFile;
+  } else if (product?.designFile) {
+    designFile = product.designFile;
+  }
+
+  // Print Type (DTF, DTG, Screen Print, etc.)
+  const printType =
+    (matchedColor && typeof matchedColor === 'object' && matchedColor.printType) ||
+    product?.manufactureSpec?.printType ||
+    product?.manufactureSpec?.method ||
+    'DTF';
+
+  // Print Position
+  const printPosition =
+    (matchedColor && typeof matchedColor === 'object' && matchedColor.printPosition) ||
+    product?.manufactureSpec?.printPosition ||
+    'Front Center';
+
+  // Print Specs
+  const printSpecs =
+    (matchedColor && typeof matchedColor === 'object' && matchedColor.printSpecs) ||
+    product?.manufactureSpec?.printSpecs ||
+    product?.manufactureSpec?.frontPrintSpec ||
+    `${printType} standard artwork print (10.5 in x 14 in)`;
+
+  // Color Hex Code
+  let colorCode = (matchedColor && typeof matchedColor === 'object' && matchedColor.code) || null;
+  if (!colorCode && normalizedOrderColor) {
+    if (normalizedOrderColor.includes('black') || normalizedOrderColor.includes('dark')) colorCode = '#0A0A0C';
+    else if (normalizedOrderColor.includes('white') || normalizedOrderColor.includes('snow')) colorCode = '#FFFFFF';
+    else if (normalizedOrderColor.includes('gray') || normalizedOrderColor.includes('charcoal')) colorCode = '#475569';
+    else if (normalizedOrderColor.includes('navy') || normalizedOrderColor.includes('blue')) colorCode = '#1E3A8A';
+    else if (normalizedOrderColor.includes('green') || normalizedOrderColor.includes('olive')) colorCode = '#14532D';
+    else if (normalizedOrderColor.includes('red') || normalizedOrderColor.includes('maroon')) colorCode = '#991B1B';
+    else if (normalizedOrderColor.includes('yellow') || normalizedOrderColor.includes('gold')) colorCode = '#CA8A04';
+    else if (normalizedOrderColor.includes('brown')) colorCode = '#451A03';
+    else if (normalizedOrderColor.includes('beige') || normalizedOrderColor.includes('sand')) colorCode = '#D4B996';
+  }
+
+  // If frontImg still empty and color matches product's default or no color views exist, fallback to product coverPhoto
+  if (!frontImg) {
+    frontImg = product?.images?.[0] || product?.coverPhoto || '';
+  }
+  if (!backImg) {
+    backImg = product?.images?.[1] || product?.images?.[0] || product?.coverPhoto || '';
+  }
+
+  return {
+    frontImg,
+    backImg,
+    designFile,
+    printType,
+    printPosition,
+    printSpecs,
+    colorCode,
+    isLight,
+    neckLogoFileName,
+    matchedColor
+  };
+};
+
 export const formatOrderForUi = (order) => {
   const firstItem = order.items?.[0] || {};
   const product = firstItem.product || {};
@@ -41,7 +163,7 @@ export const formatOrderForUi = (order) => {
 
   // Parse shippingAddress if it is a JSON string
   let formattedAddress = order.shippingAddress || 'Customer Address';
-  let recipientName = user.fullName || user.username || '';
+  let recipientName = user.fullName || user.email || '';
   let recipientPhone = user.mobile || '';
   let recipientCountry = user.country || '';
 
@@ -77,21 +199,10 @@ export const formatOrderForUi = (order) => {
     }
   }
 
-  // Resolve best front and back image
-  let frontImg = product.images?.[0] || product.coverPhoto;
-  let backImg = product.images?.[1] || product.images?.[0] || product.coverPhoto;
-
-  if (Array.isArray(product.colors) && firstItem.color) {
-    const matchedColor = product.colors.find(c =>
-      typeof c === 'object' && c?.name?.toLowerCase() === firstItem.color?.toLowerCase()
-    );
-    if (matchedColor?.images?.[0]) {
-      frontImg = matchedColor.images[0];
-      backImg = matchedColor.images[1] || matchedColor.images[0];
-    } else if (matchedColor?.image) {
-      frontImg = matchedColor.image;
-    }
-  }
+  // Resolve color-specific assets (mockups, DTF/DTG design file, print specs, neck tag)
+  const colorAssets = resolveColorAssets(product, firstItem.color);
+  let frontImg = colorAssets.frontImg;
+  let backImg = colorAssets.backImg;
 
   if (!frontImg) {
     frontImg = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80';
@@ -130,7 +241,7 @@ export const formatOrderForUi = (order) => {
     size: firstItem.size || 'L',
     color: firstItem.color || 'Standard',
     orderedBy: user.id || order.userId || '',
-    fullName: recipientName || user.fullName || user.username || 'Customer',
+    fullName: recipientName || user.fullName || user.email || 'Customer',
     phone: recipientPhone || user.mobile || 'N/A',
     country: recipientCountry || user.country || 'India',
     shippingAddress: formattedAddress,
@@ -156,12 +267,23 @@ export const formatOrderForUi = (order) => {
       frontViewUrl: frontImg,
       backViewUrl: backImg,
       neckLogoUrl: product.images?.[2] || '',
-      printingDetails: product.manufactureSpec || {
-        method: 'Direct-to-Film (DTF) Heat Transfer',
-        frontPrintSpec: 'High-density chest print (10.5 in x 3.5 in)',
-        backPrintSpec: 'Full graphic artwork back print (14 in x 18 in)',
-        neckLogoSpec: 'Inner collar neck label 2.5 in x 1.0 in',
-        pantoneCodes: '#1A1A1A / Washed Charcoal'
+      designFile: colorAssets.designFile || null,
+      printType: colorAssets.printType,
+      printPosition: colorAssets.printPosition,
+      printSpecs: colorAssets.printSpecs,
+      colorCode: colorAssets.colorCode,
+      colorName: firstItem.color || 'Standard',
+      printingDetails: {
+        method: colorAssets.printType ? `${colorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
+        printType: colorAssets.printType,
+        printPosition: colorAssets.printPosition,
+        designFile: colorAssets.designFile || null,
+        frontPrintSpec: colorAssets.printSpecs,
+        backPrintSpec: product.manufactureSpec?.backPrintSpec || 'Full graphic artwork back print (14 in x 18 in)',
+        neckLogoSpec: `Inner collar neck label 2.5 in x 1.0 in (${colorAssets.isLight ? 'Black Font' : 'White Font'})`,
+        neckLogoFile: colorAssets.neckLogoFileName,
+        fabricGSM: product.manufactureSpec?.fabricGSM || '240 GSM 100% Ring-Spun Cotton',
+        pantoneCodes: colorAssets.colorCode ? `${colorAssets.colorCode} / ${firstItem.color || 'Standard'}` : '#1A1A1A / Standard'
       }
     },
     items: order.items || order.orderItems || []
@@ -238,7 +360,6 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       const existingUserByName = await prisma.user.findFirst({
         where: {
           OR: [
-            { username: { equals: trimmedOrderedBy, mode: 'insensitive' } },
             { email: { equals: trimmedOrderedBy, mode: 'insensitive' } },
             { fullName: { equals: trimmedOrderedBy, mode: 'insensitive' } }
           ]
@@ -257,7 +378,7 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       where: {
         OR: [
           { fullName: { equals: trimmedName, mode: 'insensitive' } },
-          { username: { equals: trimmedName, mode: 'insensitive' } }
+          { email: { equals: trimmedName, mode: 'insensitive' } }
         ]
       }
     });
