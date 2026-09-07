@@ -91,7 +91,7 @@ export default function TrackOrderPage() {
                     </div>
                     <div className="flex-1 flex flex-col justify-center">
                       <Link to={`/product/${item.productId}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 w-fit line-clamp-1">{item.name}</Link>
-                      <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} <span className="mx-2 text-border">•</span> Qty: {item.quantity}</p>
+                      <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} {item.color && <><span className="mx-2 text-border">•</span> Color: {item.color}</>} <span className="mx-2 text-border">•</span> Qty: {item.quantity}</p>
                     </div>
                     <div className="flex items-center hidden sm:flex">
                       <Link to={`/product/${item.productId}`} className="text-[10px] font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted transition-colors whitespace-nowrap">

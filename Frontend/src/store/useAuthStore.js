@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 
@@ -20,7 +20,7 @@ export const useAuthStore = create(
           console.log('Error checking auth:', error.message);
           // Only log out if it's explicitly an unauthorized or not found error
           if (error.response && (error.response.status === 401 || error.response.status === 403 || error.response.status === 404)) {
-            localStorage.removeItem('hs_auth_token');
+            sessionStorage.removeItem('hs_auth_token');
             set({ user: null, isAuthenticated: false });
           } else {
             // For network errors or 500s, assume the token is still valid if we were authenticated before
@@ -35,7 +35,7 @@ export const useAuthStore = create(
         set({ isSigningUp: true });
         try {
           const res = await axiosInstance.post('/auth/register', data);
-          localStorage.setItem('hs_auth_token', res.data.token);
+          sessionStorage.setItem('hs_auth_token', res.data.token);
           set({ user: res.data, isAuthenticated: true });
           toast.success('Account created successfully!');
         } catch (error) {
@@ -51,7 +51,7 @@ export const useAuthStore = create(
         set({ isLoggingIn: true });
         try {
           const res = await axiosInstance.post('/auth/login', data);
-          localStorage.setItem('hs_auth_token', res.data.token);
+          sessionStorage.setItem('hs_auth_token', res.data.token);
           set({ user: res.data, isAuthenticated: true });
           toast.success('Welcome back!');
         } catch (error) {
@@ -69,7 +69,7 @@ export const useAuthStore = create(
         } catch (error) {
           console.log('Error during logout API call', error);
         } finally {
-          localStorage.removeItem('hs_auth_token');
+          sessionStorage.removeItem('hs_auth_token');
           set({ user: null, isAuthenticated: false });
           toast.success('Logged out successfully');
         }
@@ -77,6 +77,7 @@ export const useAuthStore = create(
     }),
     {
       name: 'hs_auth_store', // name of the item in the storage (must be unique)
+      storage: createJSONStorage(() => sessionStorage), // Use sessionStorage instead of default localStorage
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )

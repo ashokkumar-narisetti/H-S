@@ -67,10 +67,10 @@ export const getCategories = async (req, res) => {
       distinct: ['category'],
     });
     
-    // Extract category strings and remove nulls/empty, sort alphabetically
+    // Extract category strings and remove nulls/empty/Apparel, sort alphabetically
     const categories = products
       .map(p => p.category)
-      .filter(c => c && c.trim() !== '')
+      .filter(c => c && c.trim() !== '' && c.toLowerCase() !== 'apparel')
       .sort();
       
     res.json(categories);

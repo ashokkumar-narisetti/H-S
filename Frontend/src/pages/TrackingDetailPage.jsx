@@ -73,7 +73,7 @@ export default function TrackingDetailPage() {
               {/* Background dotted line */}
               <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
               {/* Active solid line */}
-              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: order.status === 'DELIVERED' ? '100%' : '50%', marginTop: '-1px' }}></div>
+              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: order.status === 'DELIVERED' ? '100%' : (order.status === 'SHIPPING' ? '50%' : '0%'), marginTop: '-1px' }}></div>
               <div className="flex justify-between relative z-10">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
@@ -83,14 +83,14 @@ export default function TrackingDetailPage() {
                   <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' || order.status === 'SHIPPING' ? 'border-black bg-black' : 'border-black bg-white'} flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]`}>
-                    {order.status === 'IN_PROGRESS' && <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>}
-                    {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && <Check className="w-4 h-4 text-white" />}
+                  <div className={`w-8 h-8 rounded-full border-4 ${(order.status === 'SHIPPING' || order.status === 'DELIVERED') ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${(order.status === 'SHIPPING' || order.status === 'DELIVERED') ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
+                    {order.status === 'SHIPPING' && <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>}
+                    {order.status === 'DELIVERED' && <Check className="w-4 h-4 text-white" />}
                   </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">Shipping</p>
+                  <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${order.status === 'IN_PROGRESS' && 'text-muted-foreground'}`}>Shipping</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center`}>
+                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${order.status === 'DELIVERED' ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
                     {order.status === 'DELIVERED' && <Check className="w-4 h-4 text-white" />}
                   </div>
                   <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${order.status !== 'DELIVERED' && 'text-muted-foreground'}`}>Delivery</p>
@@ -117,7 +117,7 @@ export default function TrackingDetailPage() {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <Link to={`/product/${item.productId}`} className="font-bold uppercase tracking-widest text-xs hover:underline underline-offset-4 line-clamp-2">{item.name}</Link>
-                    <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} • Qty: {item.quantity}</p>
+                    <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} {item.color && <><span className="mx-2 text-border">•</span> Color: {item.color}</>} <span className="mx-2 text-border">•</span> Qty: {item.quantity}</p>
                   </div>
                 </div>
               ))}
