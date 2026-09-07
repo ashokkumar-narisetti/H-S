@@ -45,6 +45,11 @@ export const initCustomTables = async () => {
       );
     `);
 
+    // 3. Hotfix: Drop the username column from the User table to sync with schema.prisma
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "User" DROP COLUMN IF EXISTS "username" CASCADE;
+    `);
+
     // Seed default settings if empty
     const taxSetting = await prisma.$queryRawUnsafe(`SELECT * FROM "Setting" WHERE "key" = 'tax'`);
     if (taxSetting.length === 0) {

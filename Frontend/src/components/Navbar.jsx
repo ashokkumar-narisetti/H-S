@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, ChevronDown, Home, Menu, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,10 +10,12 @@ export default function Navbar() {
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const productsRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuthStore();
   const { categories: storeCategories, fetchCategories } = useCatalogStore();
 
@@ -57,6 +59,15 @@ export default function Navbar() {
     path: `/category/${cat}` // Generates /category/T-Shirts, /category/Hoodies, etc.
   }));
 
+  const handleConfirmLogout = () => {
+    logout();
+    setShowLogoutConfirm(false);
+    navigate('/');
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+  };
+
   const profileLinks = [
     { name: 'Profile', path: '/account' },
     { name: 'Addresses', path: '/addresses' },
@@ -66,7 +77,7 @@ export default function Navbar() {
     // { name: 'Wallet', path: '/wallet' },
     { name: 'Help', path: '/help' },
     { name: 'Terms & Conditions', path: '/terms' },
-    { name: 'Logout', action: () => logout() }
+    { name: 'Logout', action: () => setShowLogoutConfirm(true) }
   ];
 
   return (
@@ -121,7 +132,7 @@ export default function Navbar() {
 
           {/* Center: Brand Logo */}
           <div className="absolute left-1/2 -translate-x-1/2 flex-shrink-0 flex flex-col items-center">
-            <Link to="/" className="font-heading text-4xl font-black tracking-tighter uppercase leading-none">
+            <Link to="/" className="font-heading text-4xl font-black tracking-tighter uppercase leading-none" onClick={() => window.scrollTo(0,0)}>
               H&S
             </Link>
             <span className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground font-bold mt-1">
@@ -138,6 +149,7 @@ export default function Navbar() {
               to="/" 
               className="p-2 hover:bg-muted rounded-full transition-colors flex items-center justify-center" 
               aria-label="Home"
+              onClick={() => window.scrollTo(0,0)}
             >
               <Home className="w-5 h-5" />
             </Link>
@@ -249,14 +261,13 @@ export default function Navbar() {
               
               <div className="border-t border-border pt-8">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6">Account</h3>
-                <div className="flex flex-col gap-5">
-                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Home</Link>
+                <div className="flex flex-col gap-4">
                   {isAuthenticated ? (
-                    profileLinks.map(link => link.path ? (
-                      <Link key={link.name} to={link.path} onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">{link.name}</Link>
-                    ) : (
-                      <button key={link.name} onClick={() => { link.action(); setIsMobileMenuOpen(false); }} className="text-sm font-bold uppercase tracking-widest text-left text-red-500 hover:text-red-600 transition-colors">{link.name}</button>
-                    ))
+                    <>
+                      <Link to="/account" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Profile</Link>
+                      <Link to="/track-orders" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Orders</Link>
+                      <button onClick={handleConfirmLogout} className="text-left text-sm font-bold uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors">Logout</button>
+                    </>
                   ) : (
                     <>
                       <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Sign In</Link>
@@ -266,6 +277,42 @@ export default function Navbar() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed top-0 left-0 w-screen h-[100dvh] bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white p-8 max-w-sm w-full shadow-2xl relative"
+            >
+              <h3 className="font-heading text-2xl font-bold uppercase tracking-widest mb-4">Confirm Logout</h3>
+              <p className="text-muted-foreground text-sm mb-8">Are you sure you want to log out of your account?</p>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 text-xs font-bold uppercase tracking-widest border border-border hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmLogout}
+                  className="flex-1 py-3 text-xs font-bold uppercase tracking-widest bg-black text-white hover:bg-black/90 transition-colors"
+                >
+                  Log Out
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -112,9 +112,23 @@ export default function ProductDetailPage() {
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
-  const allImages = product.coverPhoto 
-    ? [product.coverPhoto, ...(product.images || []).filter(img => img !== product.coverPhoto)] 
-    : (product.images || ['https://via.placeholder.com/800']);
+  let allImages = [];
+  
+  // Find the selected color object
+  const selectedColorObj = (product.colors || []).find(c => 
+    (typeof c === 'string' ? c : c?.name || 'Default Color') === selectedColor
+  ) || {};
+
+  // If the selected color has specific model photos, use them!
+  const colorImages = Array.isArray(selectedColorObj.modelPhotos) && selectedColorObj.modelPhotos.length > 0
+    ? selectedColorObj.modelPhotos
+    : (product.images || []);
+
+  if (product.coverPhoto) {
+    allImages = [product.coverPhoto, ...colorImages.filter(img => img !== product.coverPhoto)];
+  } else {
+    allImages = colorImages.length > 0 ? colorImages : ['https://via.placeholder.com/800'];
+  }
 
   return (
     <div className="pt-24 pb-20 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
@@ -358,7 +372,7 @@ export default function ProductDetailPage() {
                   <div key={p.id}>
                     <Link to={`/product/${p.id}`} className="group block">
                       <div className="aspect-[3/4] bg-muted overflow-hidden mb-4 relative rounded-xl">
-                        <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <img src={p.coverPhoto || (p.images && p.images[0]) || 'https://via.placeholder.com/400'} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       </div>
                       <h3 className="font-bold text-sm uppercase tracking-tight group-hover:underline">{p.name}</h3>
                       <p className="text-muted-foreground text-sm">${p.price.toFixed(2)}</p>

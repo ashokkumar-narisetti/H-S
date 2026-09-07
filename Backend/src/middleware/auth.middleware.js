@@ -3,10 +3,16 @@ import { prisma } from '../lib/prisma.js';
 
 export const protectRoute = async (req, res, next) => {
   try {
-    let token = req.cookies?.jwt;
+    let token;
 
-    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    // 1. Prioritize Bearer token from headers (Frontend uses this)
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
+    }
+    
+    // 2. Fall back to cookie if no header is provided
+    if (!token && req.cookies?.jwt) {
+      token = req.cookies.jwt;
     }
 
     if (!token) {
