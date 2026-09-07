@@ -91,33 +91,77 @@ export const resolveColorAssets = (product, orderColor) => {
 
   // Design File (Artwork for print placement, e.g. DTF/DTG file)
   let designFile = '';
-  if (matchedColor && typeof matchedColor === 'object' && matchedColor.designFile) {
-    designFile = matchedColor.designFile;
-  } else if (product?.manufactureSpec?.designFile) {
+  if (matchedColor && typeof matchedColor === 'object') {
+    if (typeof matchedColor.designFile === 'string' && matchedColor.designFile) {
+      designFile = matchedColor.designFile;
+    } else if (Array.isArray(matchedColor.printSpecs) && typeof matchedColor.printSpecs[0]?.designFile === 'string') {
+      designFile = matchedColor.printSpecs[0].designFile;
+    } else if (matchedColor.printSpecs && typeof matchedColor.printSpecs.designFile === 'string') {
+      designFile = matchedColor.printSpecs.designFile;
+    }
+  }
+  if (!designFile && typeof product?.manufactureSpec?.designFile === 'string') {
     designFile = product.manufactureSpec.designFile;
-  } else if (product?.designFile) {
+  } else if (!designFile && typeof product?.designFile === 'string') {
     designFile = product.designFile;
   }
 
   // Print Type (DTF, DTG, Screen Print, etc.)
-  const printType =
-    (matchedColor && typeof matchedColor === 'object' && matchedColor.printType) ||
-    product?.manufactureSpec?.printType ||
-    product?.manufactureSpec?.method ||
-    'DTF';
+  let printType = 'DTF';
+  if (matchedColor && typeof matchedColor === 'object') {
+    if (typeof matchedColor.printType === 'string' && matchedColor.printType) {
+      printType = matchedColor.printType;
+    } else if (Array.isArray(matchedColor.printSpecs) && typeof matchedColor.printSpecs[0]?.printType === 'string') {
+      printType = matchedColor.printSpecs[0].printType;
+    } else if (matchedColor.printSpecs && typeof matchedColor.printSpecs.printType === 'string') {
+      printType = matchedColor.printSpecs.printType;
+    }
+  } else if (typeof product?.manufactureSpec?.printType === 'string') {
+    printType = product.manufactureSpec.printType;
+  } else if (typeof product?.manufactureSpec?.method === 'string') {
+    printType = product.manufactureSpec.method;
+  }
 
   // Print Position
-  const printPosition =
-    (matchedColor && typeof matchedColor === 'object' && matchedColor.printPosition) ||
-    product?.manufactureSpec?.printPosition ||
-    'Front Center';
+  let printPosition = 'Front Center';
+  if (matchedColor && typeof matchedColor === 'object') {
+    if (typeof matchedColor.printPosition === 'string' && matchedColor.printPosition) {
+      printPosition = matchedColor.printPosition;
+    } else if (Array.isArray(matchedColor.printSpecs) && typeof matchedColor.printSpecs[0]?.printPosition === 'string') {
+      printPosition = matchedColor.printSpecs[0].printPosition;
+    } else if (matchedColor.printSpecs && typeof matchedColor.printSpecs.printPosition === 'string') {
+      printPosition = matchedColor.printSpecs.printPosition;
+    }
+  } else if (typeof product?.manufactureSpec?.printPosition === 'string') {
+    printPosition = product.manufactureSpec.printPosition;
+  }
 
-  // Print Specs
-  const printSpecs =
-    (matchedColor && typeof matchedColor === 'object' && matchedColor.printSpecs) ||
-    product?.manufactureSpec?.printSpecs ||
-    product?.manufactureSpec?.frontPrintSpec ||
-    `${printType} standard artwork print (10.5 in x 14 in)`;
+  // Print Specs (Must always be a string, never an object or array)
+  let printSpecs = '';
+  if (matchedColor && typeof matchedColor === 'object' && matchedColor.printSpecs) {
+    if (typeof matchedColor.printSpecs === 'string') {
+      printSpecs = matchedColor.printSpecs;
+    } else if (Array.isArray(matchedColor.printSpecs) && matchedColor.printSpecs.length > 0) {
+      const first = matchedColor.printSpecs[0];
+      if (typeof first === 'string') {
+        printSpecs = first;
+      } else if (first && typeof first === 'object') {
+        printSpecs = `${first.printType || printType} print on ${first.printPosition || printPosition}`;
+      }
+    } else if (typeof matchedColor.printSpecs === 'object') {
+      printSpecs = `${matchedColor.printSpecs.printType || printType} print on ${matchedColor.printSpecs.printPosition || printPosition}`;
+    }
+  }
+
+  if (!printSpecs) {
+    if (typeof product?.manufactureSpec?.printSpecs === 'string') {
+      printSpecs = product.manufactureSpec.printSpecs;
+    } else if (typeof product?.manufactureSpec?.frontPrintSpec === 'string') {
+      printSpecs = product.manufactureSpec.frontPrintSpec;
+    } else {
+      printSpecs = `${printType} standard artwork print (10.5 in x 14 in)`;
+    }
+  }
 
   // Color Hex Code
   let colorCode = (matchedColor && typeof matchedColor === 'object' && matchedColor.code) || null;
