@@ -40,12 +40,11 @@ export const getProducts = async (req, res) => {
     if (dropId) filter.dropId = dropId;
     if (inStock !== undefined) filter.inStock = inStock === 'true';
 
-    // Hide orphaned products and products in Draft drops from the public frontend
+    // Hide products that belong to a Draft/Inactive drop from the public frontend
+    // But ALLOW products that don't belong to any drop at all!
     if (req.query.all !== 'true') {
-      filter.drop = {
-        isNot: null
-      };
       filter.OR = [
+        { dropId: null },
         { drop: { status: 'Live' } },
         { drop: { status: 'live' } },
         { drop: { isActive: true } }
@@ -101,7 +100,7 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const dropIdFromParams = req.params.dropId;
-    const body = sanitizeProductImageFields(req.body);
+    const body = await sanitizeProductImageFields(req.body);
 
     const { 
       name, manufactureName, description, price, userPrice, manufacturePrice,
@@ -156,7 +155,7 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const productId = req.params.id;
-    const body = sanitizeProductImageFields(req.body);
+    const body = await sanitizeProductImageFields(req.body);
 
     const { 
       name, manufactureName, description, price, userPrice, manufacturePrice,
