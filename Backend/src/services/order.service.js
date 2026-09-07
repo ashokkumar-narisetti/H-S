@@ -41,7 +41,7 @@ export const formatOrderForUi = (order) => {
 
   // Parse shippingAddress if it is a JSON string
   let formattedAddress = order.shippingAddress || 'Customer Address';
-  let recipientName = user.fullName || user.username || '';
+  let recipientName = user.fullName || user.email || '';
   let recipientPhone = user.mobile || '';
   let recipientCountry = user.country || '';
 
@@ -130,7 +130,7 @@ export const formatOrderForUi = (order) => {
     size: firstItem.size || 'L',
     color: firstItem.color || 'Standard',
     orderedBy: user.id || order.userId || '',
-    fullName: recipientName || user.fullName || user.username || 'Customer',
+    fullName: recipientName || user.fullName || user.email || 'Customer',
     phone: recipientPhone || user.mobile || 'N/A',
     country: recipientCountry || user.country || 'India',
     shippingAddress: formattedAddress,
@@ -238,7 +238,6 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       const existingUserByName = await prisma.user.findFirst({
         where: {
           OR: [
-            { username: { equals: trimmedOrderedBy, mode: 'insensitive' } },
             { email: { equals: trimmedOrderedBy, mode: 'insensitive' } },
             { fullName: { equals: trimmedOrderedBy, mode: 'insensitive' } }
           ]
@@ -257,7 +256,7 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       where: {
         OR: [
           { fullName: { equals: trimmedName, mode: 'insensitive' } },
-          { username: { equals: trimmedName, mode: 'insensitive' } }
+          { email: { equals: trimmedName, mode: 'insensitive' } }
         ]
       }
     });

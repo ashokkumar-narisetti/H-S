@@ -9,7 +9,7 @@ export const getDashboardStats = async (req, res) => {
     const orders = await prisma.order.findMany({
       include: {
         items: { include: { product: true } },
-        user: { select: { fullName: true, username: true, email: true } }
+        user: { select: { fullName: true, email: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -144,7 +144,7 @@ export const getDashboardStats = async (req, res) => {
 
       return {
         id: order.id,
-        customer: order.user?.fullName || order.user?.username || 'Customer',
+        customer: order.user?.fullName || order.user?.email || 'Customer',
         product: firstItem?.name || firstItem?.product?.name || 'Apparel Item',
         amount: Number(order.totalPrice) || 0,
         payment: order.paymentStatus === 'SUCCESSFUL' ? 'Online' : 'Card',
@@ -197,7 +197,7 @@ export const getDashboardStats = async (req, res) => {
     const recentUsers = users.slice(0, 5).map((u, idx) => ({
       id: u.id,
       profileImage: `https://i.pravatar.cc/150?u=${u.id || idx}`,
-      username: u.username || u.fullName,
+      username: u.fullName || u.email,
       email: u.email,
       joinedDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : todayStr,
       status: u.status || 'Active'
@@ -225,7 +225,7 @@ export const getDashboardStats = async (req, res) => {
       activityFeed.push({
         id: `ACT-USR-${users[0].id.slice(0, 6)}`,
         type: 'user_registered',
-        message: `User ${users[0].fullName || users[0].username} joined H&S platform.`,
+        message: `User ${users[0].fullName || users[0].email} joined H&S platform.`,
         timestamp: users[0].createdAt ? new Date(users[0].createdAt).toISOString() : new Date().toISOString()
       });
     }
