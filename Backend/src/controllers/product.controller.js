@@ -169,14 +169,30 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    const parsedUserPrice = userPrice !== undefined ? safeParseFloat(userPrice) : undefined;
+    const parsedPrice = price !== undefined 
+      ? (safeParseFloat(price) ?? product.price) 
+      : (parsedUserPrice !== undefined ? parsedUserPrice : undefined);
+
+    let finalColors = undefined;
+    if (colors !== undefined) {
+      finalColors = ensureArray(colors);
+    } else if (parsedUserPrice !== undefined && Array.isArray(product.colors) && product.colors.length > 0) {
+      finalColors = product.colors.map(c => ({
+        ...c,
+        userPrice: parsedUserPrice,
+        sellingPrice: parsedUserPrice
+      }));
+    }
+
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: {
         ...(name !== undefined && { name }),
         ...(manufactureName !== undefined && { manufactureName: manufactureName || null }),
         ...(description !== undefined && { description }),
-        ...(price !== undefined && { price: safeParseFloat(price) ?? product.price }),
-        ...(userPrice !== undefined && { userPrice: safeParseFloat(userPrice) }),
+        ...(parsedPrice !== undefined && { price: parsedPrice }),
+        ...(parsedUserPrice !== undefined && { userPrice: parsedUserPrice }),
         ...(manufacturePrice !== undefined && { manufacturePrice: safeParseFloat(manufacturePrice) }),
         ...(images !== undefined && { images: Array.isArray(images) ? images : [] }),
         ...(coverPhoto !== undefined && { coverPhoto }),
@@ -188,7 +204,7 @@ export const updateProduct = async (req, res) => {
         ...(stock !== undefined && { stock: safeParseInt(stock) ?? product.stock }),
         ...(inStock !== undefined && { inStock }),
         ...(sizes !== undefined && { sizes: ensureArray(sizes) }),
-        ...(colors !== undefined && { colors: ensureArray(colors) }),
+        ...(finalColors !== undefined && { colors: finalColors }),
         ...(sizeChart !== undefined && { sizeChart }),
         ...(washCare !== undefined && { washCare }),
         ...(shippingNote !== undefined && { shippingNote }),
