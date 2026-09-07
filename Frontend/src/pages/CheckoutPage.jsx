@@ -14,8 +14,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, MapPin, Info } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, Info, CheckCircle } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CheckoutPage() {
   const { cartItems, clearCart, updateQuantity, removeFromCart } = useCartStore();
@@ -101,6 +102,9 @@ export default function CheckoutPage() {
   const shipping = subtotal > 150 ? 0 : 10;
   const total = subtotal + gst + shipping;
 
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -137,7 +141,16 @@ export default function CheckoutPage() {
       
       clearCart();
       setIsProcessing(false);
-      navigate(`/track/${res.data.id}`);
+      
+      // Show success animation instead of immediate redirect
+      setCreatedOrderId(res.data.id);
+      setShowSuccess(true);
+      
+      // Auto redirect after 3 seconds
+      setTimeout(() => {
+        navigate(`/track/${res.data.id}`);
+      }, 3000);
+      
     } catch (error) {
       console.error('Checkout error:', error);
       alert(error.response?.data?.message || 'Error placing order');
@@ -364,8 +377,47 @@ export default function CheckoutPage() {
             </button>
           </form>
         </div>
-
       </div>
+      
+      {/* Success Animation Overlay */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white"
+          >
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 20 }}
+              className="flex flex-col items-center text-center px-4"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200, damping: 10 }}
+                className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6"
+              >
+                <CheckCircle className="w-12 h-12 text-green-600" />
+              </motion.div>
+              <h2 className="font-heading text-4xl font-bold uppercase tracking-tight mb-4">Order Confirmed!</h2>
+              <p className="text-muted-foreground uppercase tracking-widest text-sm mb-8">Thank you for your purchase.</p>
+              
+              <div className="w-12 h-1 bg-foreground/10 overflow-hidden relative rounded-full">
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                  className="absolute inset-0 bg-foreground"
+                />
+              </div>
+              <p className="text-xs uppercase tracking-widest text-muted-foreground mt-4 font-bold">Redirecting to tracking...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

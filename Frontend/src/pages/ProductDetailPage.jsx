@@ -305,10 +305,9 @@ export default function ProductDetailPage() {
             {product.description && (
               <Accordion title="Details & Description" defaultOpen={true}>
                 <p className="whitespace-pre-line">{product.description}</p>
-                {(product.fit || product.category) && (
+                {product.fit && (
                   <ul className="mt-4 space-y-2 list-disc list-inside">
-                    {product.fit && <li>Fit: {product.fit}</li>}
-                    {product.category && <li>Category: {product.category}</li>}
+                    <li>Fit: {product.fit}</li>
                   </ul>
                 )}
               </Accordion>

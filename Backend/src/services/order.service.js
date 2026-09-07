@@ -161,10 +161,10 @@ export const formatOrderForUi = (order) => {
         frontPrintSpec: 'High-density chest print (10.5 in x 3.5 in)',
         backPrintSpec: 'Full graphic artwork back print (14 in x 18 in)',
         neckLogoSpec: 'Inner collar neck label 2.5 in x 1.0 in',
-        fabricGSM: '240 GSM 100% Ring-Spun Cotton',
         pantoneCodes: '#1A1A1A / Washed Charcoal'
       }
-    }
+    },
+    items: order.items || order.orderItems || []
   };
 };
 
@@ -470,6 +470,8 @@ export const getOrdersForUser = async (user) => {
       { manufacturerId: user.id },
       { manufacturerId: null }
     ];
+  } else if (userRole === 'USER' && user?.id) {
+    whereClause.userId = user.id;
   }
 
   const orders = await prisma.order.findMany({

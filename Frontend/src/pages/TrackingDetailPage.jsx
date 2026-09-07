@@ -19,7 +19,7 @@ export default function TrackingDetailPage() {
     const fetchOrder = async () => {
       try {
         const res = await axiosInstance.get(`/orders/${orderId}`);
-        setOrder(res.data);
+        setOrder(res.data.data || res.data.order || res.data);
       } catch (error) {
         console.error('Error fetching order tracking:', error);
       } finally {
@@ -33,13 +33,19 @@ export default function TrackingDetailPage() {
     return <div className="pt-32 text-center text-muted-foreground uppercase tracking-widest font-bold text-sm">Loading Tracking Data...</div>;
   }
 
-  if (!order) {
+  if (!order || !order.id) {
     return <div className="pt-32 text-center text-red-500 uppercase tracking-widest font-bold text-sm">Order Not Found</div>;
   }
 
-  const address = typeof order.shippingAddress === 'string' 
-    ? JSON.parse(order.shippingAddress) 
-    : order.shippingAddress;
+  let address = order.shippingAddress;
+  if (typeof order.shippingAddress === 'string') {
+    try {
+      address = JSON.parse(order.shippingAddress);
+    } catch (e) {
+      console.warn("Failed to parse shippingAddress JSON, falling back to string:", e);
+      address = { street: order.shippingAddress };
+    }
+  }
 
   return (
     <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
@@ -51,7 +57,7 @@ export default function TrackingDetailPage() {
 
       <div className="flex justify-between items-end mb-8 border-b border-border pb-6">
         <h1 className="font-heading text-3xl uppercase font-bold tracking-tight">Order Tracking</h1>
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{order.id.slice(-6)}</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{order.id?.slice(-6)}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -104,7 +110,7 @@ export default function TrackingDetailPage() {
               <Package className="w-4 h-4" /> Items in Shipment
             </h3>
             <div className="space-y-4">
-              {order.items.map((item, idx) => (
+              {(order.orderItems || order.items || []).map((item, idx) => (
                 <div key={idx} className="flex gap-4">
                   <div className="w-16 h-20 bg-muted relative flex-shrink-0">
                     <img src={item.product?.images?.[0] || 'https://via.placeholder.com/150'} alt={item.name} className="w-full h-full object-cover" />

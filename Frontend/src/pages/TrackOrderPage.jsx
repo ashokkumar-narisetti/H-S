@@ -20,7 +20,7 @@ export default function TrackOrderPage() {
     const fetchOrders = async () => {
       try {
         const res = await axiosInstance.get('/orders/myorders');
-        setOrders(res.data);
+        setOrders(res.data.data || res.data || []);
       } catch (error) {
         console.error('Error fetching orders:', error);
       } finally {
@@ -50,11 +50,11 @@ export default function TrackOrderPage() {
               <div className="flex flex-wrap gap-8 text-sm items-center">
                 <div>
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Order Placed</p>
-                  <p className="font-bold">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p className="font-bold">{new Date(order.createdAt || order.orderedDate || Date.now()).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
-                  <p className="font-bold">₹{order.totalPrice.toFixed(2)}</p>
+                  <p className="font-bold">₹{(order.totalPrice || order.amountPaid || 0).toFixed(2)}</p>
                 </div>
                 <div className="flex flex-col items-start">
                   <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
