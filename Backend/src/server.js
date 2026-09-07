@@ -46,6 +46,10 @@ const isAllowedOrigin = (origin) => {
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
     return true;
   }
+  // Allow any Vercel preview or production deployments
+  if (/\.vercel\.app$/.test(origin)) {
+    return true;
+  }
   return false;
 };
 
