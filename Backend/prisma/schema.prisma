@@ -96,6 +96,8 @@ model Product {
   drop           Drop?       @relation(fields: [dropId], references: [id], onDelete: SetNull)
   manufacturerId String?
   manufacturer   User?       @relation("ManufacturerProducts", fields: [manufacturerId], references: [id], onDelete: SetNull)
+  categoryId     String?
+  categoryRel    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   orderItems     OrderItem[]
   cartItems      CartItem[]
   reviews        Review[]
@@ -103,6 +105,10 @@ model Product {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([dropId])
+  @@index([manufacturerId])
 }
 
 model Drop {
@@ -191,6 +197,11 @@ model Order {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([manufacturerId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 enum OrderStatus {
@@ -218,3 +229,37 @@ enum paymentStatus{
    PENDING
    SUCCESSFULL
 }
+
+model Category {
+  id             String    @id @default(uuid())
+  name           String    @unique
+  description    String?
+  weightPerPiece Float     @default(0.500)
+  conversionRule String?
+  isActive       Boolean   @default(true)
+  products       Product[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Coupon {
+  id            String    @id
+  code          String    @unique
+  type          String    @default("Public")
+  discountValue Float     @default(10)
+  discountType  String    @default("Percentage")
+  minSpend      Float     @default(0)
+  usageLimit    Int       @default(0)
+  usageCount    Int       @default(0)
+  expiryDate    String?   @default("2026-12-31")
+  status        String    @default("Active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt
+}
+

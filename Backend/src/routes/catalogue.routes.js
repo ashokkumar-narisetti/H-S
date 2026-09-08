@@ -21,6 +21,11 @@ import {
 import {
   uploadImage,
   getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  updateCategoryWeightRules,
+  resetCategories,
   getPrintTypes,
   getPrintPositions
 } from '../controllers/catalogue.controller.js';
@@ -30,6 +35,12 @@ const router = express.Router();
 // Summary & Metadata
 router.get('/summary', getCatalogSummary);
 router.get('/categories', getCategories);
+router.post('/categories', protectRoute, adminRoute, createCategory);
+router.put('/categories/rules', protectRoute, adminRoute, updateCategoryWeightRules);
+router.post('/categories/reset', protectRoute, adminRoute, resetCategories);
+router.put('/categories/:id', protectRoute, adminRoute, updateCategory);
+router.delete('/categories/:id', protectRoute, adminRoute, deleteCategory);
+
 router.get('/print-types', getPrintTypes);
 router.get('/print-positions', getPrintPositions);
 

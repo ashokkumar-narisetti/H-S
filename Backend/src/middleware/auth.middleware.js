@@ -16,30 +16,76 @@ export const protectRoute = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({ message: 'Unauthorized - No token provided' });
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized - No authentication token provided',
+        code: 'NO_TOKEN'
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    if (!decoded) {
-      return res.status(401).json({ message: 'Unauthorized - Invalid token' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      if (jwtErr.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Session expired. Please log in again.',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized - Invalid or malformed token',
+        code: 'TOKEN_INVALID'
+      });
+    }
+
+    if (!decoded || !decoded.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized - Invalid token payload',
+        code: 'TOKEN_INVALID'
+      });
     }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, role: true }
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        companyName: true,
+        status: true
+      }
     });
 
     if (!user) {
-      return res.status(401).json({ message: 'Unauthorized - User not found' });
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized - Account not found',
+        code: 'USER_NOT_FOUND'
+      });
     }
 
-    // Attach userId and role to the request for the next middleware/controller
+    if (user.status === 'Blocked') {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is suspended. Please contact administrator.',
+        code: 'ACCOUNT_SUSPENDED'
+      });
+    }
+
+    // Attach full authenticated user to request
     req.user = user;
-    
     next();
   } catch (error) {
     console.error('Error in protectRoute middleware: ', error.message);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({
+      success: false,
+      message: 'Internal authentication server error',
+      code: 'AUTH_SERVER_ERROR'
+    });
   }
 };

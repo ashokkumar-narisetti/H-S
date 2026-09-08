@@ -116,6 +116,72 @@ export const toggleCouponStatus = async (req, res) => {
   }
 };
 
+// @desc    Validate coupon code and return authoritative discount
+// @route   POST /api/coupons/validate
+// @access  Private (Authenticated users)
+export const validateCoupon = async (req, res) => {
+  try {
+    await initCustomTables();
+    const { code, amount = 0 } = req.body;
+
+    if (!code || !code.trim()) {
+      return res.status(400).json({ success: false, message: 'Coupon code is required' });
+    }
+
+    const cleanCode = code.trim().toUpperCase();
+    const coupon = await prisma.coupon.findUnique({ where: { code: cleanCode } });
+
+    if (!coupon) {
+      return res.status(404).json({ success: false, message: 'Invalid coupon code' });
+    }
+
+    if (coupon.status !== 'Active') {
+      return res.status(400).json({ success: false, message: 'This coupon is currently inactive or disabled' });
+    }
+
+    if (coupon.expiryDate) {
+      const expiry = new Date(coupon.expiryDate);
+      expiry.setHours(23, 59, 59, 999);
+      if (expiry < new Date()) {
+        return res.status(400).json({ success: false, message: 'This coupon has expired' });
+      }
+    }
+
+    const orderAmt = Number(amount) || 0;
+    if (coupon.minSpend > 0 && orderAmt < coupon.minSpend) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum spend of ₹${coupon.minSpend.toLocaleString('en-IN')} required to apply this coupon`
+      });
+    }
+
+    if (coupon.usageLimit > 0 && coupon.usageCount >= coupon.usageLimit) {
+      return res.status(400).json({ success: false, message: 'Coupon usage limit has been reached' });
+    }
+
+    let discount = 0;
+    if (coupon.discountType === 'Percentage') {
+      discount = (orderAmt * coupon.discountValue) / 100;
+    } else {
+      discount = Math.min(orderAmt, coupon.discountValue);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon is valid and applied',
+      data: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        discountAmount: Number(discount.toFixed(2))
+      }
+    });
+  } catch (error) {
+    console.error('Error validating coupon:', error.message);
+    res.status(500).json({ success: false, message: 'Server error validating coupon' });
+  }
+};
+
 // @desc    Delete coupon
 // @route   DELETE /api/coupons/:id
 // @access  Private/Admin
@@ -131,3 +197,5 @@ export const deleteCoupon = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete coupon' });
   }
 };
+
+

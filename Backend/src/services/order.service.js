@@ -290,6 +290,7 @@ export const formatOrderForUi = (order) => {
     country: recipientCountry || user.country || 'India',
     shippingAddress: formattedAddress,
     amountPaid: order.totalPrice || 0,
+    totalPrice: order.totalPrice || 0,
     mfgPayment: resolvedMfgPayment,
     manufacturerId: order.manufacturerId || null,
     manufacturerName: manufacturer ? (manufacturer.companyName || manufacturer.fullName) : null,
@@ -359,268 +360,380 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
   const trimmedItemName = (itemName || 'Custom Product').trim();
   const trimmedMfgItemName = (mfgItemName || `MFG ${trimmedItemName}`).trim();
 
-  // 1. Resolve or create associated Product
-  let product = await prisma.product.findFirst({
-    where: {
-      name: { equals: trimmedItemName, mode: 'insensitive' }
-    }
-  });
-
-  const parsedMfgPayment = Number(mfgPayment);
-  let validMfgPayment = (parsedMfgPayment > 0) ? parsedMfgPayment : 0;
-  if (!validMfgPayment && product && typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
-    validMfgPayment = product.manufacturePrice;
-  }
-  if (!validMfgPayment) {
-    validMfgPayment = Math.round(validAmountPaid * 0.6);
-  }
-
-  if (!product) {
-    product = await prisma.product.create({
-      data: {
-        name: trimmedItemName,
-        manufactureName: trimmedMfgItemName,
-        price: validAmountPaid,
-        manufacturePrice: validMfgPayment,
-        category: 'Apparel',
-        gender: 'Unisex',
-        stock: 100,
-        inStock: true,
-        manufacturerId: manufacturerId || null
+  return await prisma.$transaction(async (tx) => {
+    // 1. Resolve or create associated Product
+    let product = await tx.product.findFirst({
+      where: {
+        name: { equals: trimmedItemName, mode: 'insensitive' }
       }
     });
-  }
 
-  // 2. Resolve Customer User ID
-  let targetUserId = null;
-  if (orderedBy && orderedBy.trim()) {
-    const trimmedOrderedBy = orderedBy.trim();
-    const existingUserById = await prisma.user.findUnique({
-      where: { id: trimmedOrderedBy }
-    });
-    if (existingUserById) {
-      targetUserId = existingUserById.id;
+    const parsedMfgPayment = Number(mfgPayment);
+    let validMfgPayment = (parsedMfgPayment > 0) ? parsedMfgPayment : 0;
+    if (!validMfgPayment && product && typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
+      validMfgPayment = product.manufacturePrice;
+    }
+    if (!validMfgPayment) {
+      validMfgPayment = Math.round(validAmountPaid * 0.6);
+    }
+
+    if (!product) {
+      product = await tx.product.create({
+        data: {
+          name: trimmedItemName,
+          manufactureName: trimmedMfgItemName,
+          price: validAmountPaid,
+          manufacturePrice: validMfgPayment,
+          category: 'Apparel',
+          gender: 'Unisex',
+          stock: 99,
+          inStock: true,
+          manufacturerId: manufacturerId || null
+        }
+      });
     } else {
-      const existingUserByName = await prisma.user.findFirst({
+      // Decrement stock if available
+      const newStock = Math.max(0, (product.stock || 1) - 1);
+      await tx.product.update({
+        where: { id: product.id },
+        data: {
+          stock: newStock,
+          inStock: newStock > 0
+        }
+      });
+    }
+
+    // 2. Resolve Customer User ID
+    let targetUserId = null;
+    if (orderedBy && orderedBy.trim()) {
+      const trimmedOrderedBy = orderedBy.trim();
+      const existingUserById = await tx.user.findUnique({
+        where: { id: trimmedOrderedBy }
+      });
+      if (existingUserById) {
+        targetUserId = existingUserById.id;
+      } else {
+        const existingUserByName = await tx.user.findFirst({
+          where: {
+            OR: [
+              { email: { equals: trimmedOrderedBy, mode: 'insensitive' } },
+              { fullName: { equals: trimmedOrderedBy, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existingUserByName) {
+          targetUserId = existingUserByName.id;
+        }
+      }
+    }
+
+    // If still not matched, check if customer fullName or phone matches
+    if (!targetUserId && fullName && fullName.trim()) {
+      const trimmedName = fullName.trim();
+      const matchedUser = await tx.user.findFirst({
         where: {
           OR: [
-            { email: { equals: trimmedOrderedBy, mode: 'insensitive' } },
-            { fullName: { equals: trimmedOrderedBy, mode: 'insensitive' } }
+            { fullName: { equals: trimmedName, mode: 'insensitive' } },
+            { email: { equals: trimmedName, mode: 'insensitive' } }
           ]
         }
       });
-      if (existingUserByName) {
-        targetUserId = existingUserByName.id;
+      if (matchedUser) {
+        targetUserId = matchedUser.id;
       }
     }
-  }
 
-  // If still not matched, check if customer fullName or phone matches
-  if (!targetUserId && fullName && fullName.trim()) {
-    const trimmedName = fullName.trim();
-    const matchedUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { fullName: { equals: trimmedName, mode: 'insensitive' } },
-          { email: { equals: trimmedName, mode: 'insensitive' } }
-        ]
+    if (!targetUserId && phone && phone.trim()) {
+      const matchedByPhone = await tx.user.findFirst({
+        where: {
+          mobile: { contains: phone.trim() }
+        }
+      });
+      if (matchedByPhone) {
+        targetUserId = matchedByPhone.id;
       }
-    });
-    if (matchedUser) {
-      targetUserId = matchedUser.id;
     }
-  }
 
-  if (!targetUserId && phone && phone.trim()) {
-    const matchedByPhone = await prisma.user.findFirst({
-      where: {
-        mobile: { contains: phone.trim() }
+    // If still not resolved, assign to a customer with role 'USER' rather than Admin
+    if (!targetUserId) {
+      const customerUser = await tx.user.findFirst({
+        where: { role: 'USER' }
+      });
+      if (customerUser) {
+        targetUserId = customerUser.id;
+      } else {
+        targetUserId = creatorUserId;
       }
-    });
-    if (matchedByPhone) {
-      targetUserId = matchedByPhone.id;
     }
-  }
 
-  // If still not resolved, assign to a customer with role 'USER' rather than Admin
-  if (!targetUserId) {
-    const customerUser = await prisma.user.findFirst({
-      where: { role: 'USER' }
-    });
-    if (customerUser) {
-      targetUserId = customerUser.id;
-    } else {
-      targetUserId = creatorUserId;
-    }
-  }
-
-  // 3. Resolve Manufacturer ID if provided
-  let validManufacturerId = null;
-  if (manufacturerId && manufacturerId.trim() && manufacturerId !== 'all' && manufacturerId !== 'unassigned') {
-    const mfgUser = await prisma.user.findFirst({
-      where: {
-        id: manufacturerId.trim(),
-        role: 'MANUFACTURER'
+    // 3. Resolve Manufacturer ID if provided
+    let validManufacturerId = null;
+    if (manufacturerId && manufacturerId.trim() && manufacturerId !== 'all' && manufacturerId !== 'unassigned') {
+      const mfgUser = await tx.user.findFirst({
+        where: {
+          id: manufacturerId.trim(),
+          role: 'MANUFACTURER'
+        }
+      });
+      if (mfgUser) {
+        validManufacturerId = mfgUser.id;
       }
-    });
-    if (mfgUser) {
-      validManufacturerId = mfgUser.id;
     }
-  }
 
-  // 4. Create Order and OrderItem
-  const dbStatus = mapUiStatusToDb(status);
-  const formattedShippingAddress = typeof shippingAddress === 'string'
-    ? shippingAddress
-    : JSON.stringify(shippingAddress || {});
+    // 4. Create Order and OrderItem
+    const dbStatus = mapUiStatusToDb(status);
+    const formattedShippingAddress = typeof shippingAddress === 'string'
+      ? shippingAddress
+      : JSON.stringify(shippingAddress || {});
 
-  const order = await prisma.order.create({
-    data: {
-      userId: targetUserId,
-      manufacturerId: validManufacturerId,
-      shippingAddress: formattedShippingAddress,
-      taxPrice: 0,
-      shippingPrice: 0,
-      totalPrice: validAmountPaid,
-      mfgPayment: validMfgPayment,
-      status: dbStatus,
-      paymentStatus: 'SUCCESSFUL',
-      mfgPaymentStatus: 'Unpaid',
-      items: {
-        create: [
-          {
-            productId: product.id,
-            name: trimmedItemName,
-            size: size || 'L',
-            color: color || 'Black',
-            quantity: 1,
-            price: validAmountPaid
+    const order = await tx.order.create({
+      data: {
+        userId: targetUserId,
+        manufacturerId: validManufacturerId,
+        shippingAddress: formattedShippingAddress,
+        taxPrice: 0,
+        shippingPrice: 0,
+        totalPrice: validAmountPaid,
+        mfgPayment: validMfgPayment,
+        status: dbStatus,
+        paymentStatus: 'SUCCESSFUL',
+        mfgPaymentStatus: 'Unpaid',
+        items: {
+          create: [
+            {
+              productId: product.id,
+              name: trimmedItemName,
+              size: size || 'L',
+              color: color || 'Black',
+              quantity: 1,
+              price: validAmountPaid
+            }
+          ]
+        }
+      },
+      include: {
+        items: {
+          include: {
+            product: true
           }
-        ]
-      }
-    },
-    include: {
-      items: {
-        include: {
-          product: true
-        }
-      },
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          mobile: true,
-          country: true
-        }
-      },
-      manufacturer: {
-        select: {
-          id: true,
-          fullName: true,
-          companyName: true,
-          email: true
+        },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            mobile: true,
+            country: true
+          }
+        },
+        manufacturer: {
+          select: {
+            id: true,
+            fullName: true,
+            companyName: true,
+            email: true
+          }
         }
       }
-    }
-  });
+    });
 
-  return formatOrderForUi(order);
+    return formatOrderForUi(order);
+  });
 };
 
 /**
- * Creates an order from consumer checkout (shopping cart).
+ * Authoritative shipping calculation helper based on Category weight rules and destination.
  */
-export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMethod, userId) => {
-  let itemsPrice = 0;
-  let totalMfgPayment = 0;
-  const itemsToCreate = [];
+export const calculateAuthoritativeShipping = async (items, country = 'India', client = prisma) => {
+  const isDomestic = (country || 'India').trim().toLowerCase() === 'india';
+  if (isDomestic) return 0;
 
-  for (const item of orderItems) {
-    const product = await prisma.product.findUnique({ where: { id: item.productId } });
-    if (!product) {
-      throw new Error(`Product ${item.name || item.productId} not found`);
-    }
+  const shipSettingRow = await client.setting.findUnique({ where: { key: 'shipping' } });
+  const shipConfig = shipSettingRow?.value || { blockStepKg: 5, ratePerBlock: 5000 };
+  const blockStepKg = Number(shipConfig.blockStepKg) || 5;
+  const ratePerBlock = Number(shipConfig.ratePerBlock) || 5000;
 
-    const itemTotal = product.price * item.quantity;
-    itemsPrice += itemTotal;
-
-    // Calculate manufacturer price for this item using catalog manufacturePrice
-    const unitMfgPrice = (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
-      ? product.manufacturePrice
-      : Math.round(product.price * 0.6);
-    totalMfgPayment += unitMfgPrice * item.quantity;
-
-    itemsToCreate.push({
-      productId: product.id,
-      name: product.name,
-      size: item.size || 'M',
-      color: item.color || null,
-      quantity: item.quantity,
-      price: product.price
-    });
-  }
-
-  const taxSettings = await getTaxSettingsHelper();
-  let taxPrice = 0;
-  if (taxSettings.enableGst) {
-    // We assume checkout orders are currently all domestic/India since shipping logic is simple
-    // A more advanced integration would check if shippingAddress.country === 'India'
-    const isIndianBuyer = true; 
-    
-    if (isIndianBuyer) {
-      taxPrice = itemsPrice > taxSettings.indianThreshold 
-        ? itemsPrice * (taxSettings.indianHighRate / 100) 
-        : itemsPrice * (taxSettings.indianLowRate / 100);
-    } else {
-      taxPrice = itemsPrice * (taxSettings.nonIndianRate / 100);
-    }
-  }
-
-  const shippingPrice = itemsPrice > 150 ? 0 : 10;
-  const totalPrice = itemsPrice + taxPrice + shippingPrice;
-  const mfgPayment = totalMfgPayment;
-  const paymentStatus = paymentMethod === 'COD' ? 'PENDING' : 'SUCCESSFUL';
-
-  const order = await prisma.order.create({
-    data: {
-      userId,
-      shippingAddress: typeof shippingAddress === 'string' ? shippingAddress : JSON.stringify(shippingAddress),
-      taxPrice,
-      shippingPrice,
-      totalPrice,
-      mfgPayment,
-      paymentStatus,
-      status: 'IN_PROGRESS',
-      items: {
-        create: itemsToCreate
-      }
-    },
-    include: {
-      items: {
-        include: { product: true }
-      },
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true,
-          mobile: true,
-          country: true
-        }
-      },
-      manufacturer: {
-        select: {
-          id: true,
-          fullName: true,
-          companyName: true,
-          email: true
-        }
-      }
-    }
+  const categories = await client.category.findMany();
+  const weightMap = {};
+  categories.forEach(c => {
+    weightMap[c.name.toLowerCase()] = c.weightPerPiece;
   });
 
-  return formatOrderForUi(order);
+  let totalWeightKg = 0;
+  for (const it of items) {
+    const catKey = (it.category || '').toLowerCase();
+    const unitWeight = weightMap[catKey] || 0.500;
+    totalWeightKg += unitWeight * (it.quantity || 1);
+  }
+
+  if (totalWeightKg <= 0) return 0;
+  const blocks = Math.ceil(totalWeightKg / blockStepKg);
+  return blocks * ratePerBlock;
+};
+
+/**
+ * Creates an order from consumer checkout (shopping cart) inside an atomic database transaction.
+ * Server-authoritative: validates inventory, decrements stock, calculates coupon, tax, shipping, and total.
+ */
+export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMethod, userId, couponCode = null) => {
+  return await prisma.$transaction(async (tx) => {
+    let itemsPrice = 0;
+    let totalMfgPayment = 0;
+    const itemsToCreate = [];
+    const itemsForShipping = [];
+
+    for (const item of orderItems) {
+      const product = await tx.product.findUnique({ where: { id: item.productId } });
+      if (!product) {
+        throw new Error(`Product ${item.name || item.productId} not found`);
+      }
+
+      // Atomic conditional decrement in PostgreSQL to prevent overselling/race conditions
+      const updateResult = await tx.product.updateMany({
+        where: {
+          id: product.id,
+          stock: { gte: item.quantity },
+          inStock: true
+        },
+        data: {
+          stock: { decrement: item.quantity }
+        }
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}, requested: ${item.quantity}`);
+      }
+
+      // Toggle inStock flag if depleted
+      const refreshed = await tx.product.findUnique({ where: { id: product.id }, select: { stock: true } });
+      if (refreshed && refreshed.stock <= 0) {
+        await tx.product.update({
+          where: { id: product.id },
+          data: { inStock: false }
+        });
+      }
+
+      const unitPrice = product.price;
+      itemsPrice += unitPrice * item.quantity;
+
+      const unitMfgPrice = (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
+        ? product.manufacturePrice
+        : Math.round(unitPrice * 0.6);
+      totalMfgPayment += unitMfgPrice * item.quantity;
+
+      itemsToCreate.push({
+        productId: product.id,
+        name: product.name,
+        size: item.size || 'M',
+        color: item.color || null,
+        quantity: item.quantity,
+        price: unitPrice
+      });
+
+      itemsForShipping.push({
+        category: product.category,
+        quantity: item.quantity
+      });
+    }
+
+    // Authoritative Coupon Validation
+    let couponDiscount = 0;
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      const cleanCode = couponCode.trim().toUpperCase();
+      const coupon = await tx.coupon.findUnique({ where: { code: cleanCode } });
+      if (coupon && coupon.status === 'Active') {
+        const notExpired = !coupon.expiryDate || new Date(coupon.expiryDate).setHours(23, 59, 59, 999) >= new Date().getTime();
+        const minSpendMet = coupon.minSpend <= itemsPrice;
+        const limitNotReached = coupon.usageLimit === 0 || coupon.usageCount < coupon.usageLimit;
+
+        if (notExpired && minSpendMet && limitNotReached) {
+          if (coupon.discountType === 'Percentage') {
+            couponDiscount = (itemsPrice * coupon.discountValue) / 100;
+          } else {
+            couponDiscount = Math.min(itemsPrice, coupon.discountValue);
+          }
+          await tx.coupon.update({
+            where: { id: coupon.id },
+            data: { usageCount: { increment: 1 } }
+          });
+        }
+      }
+    }
+
+    // Determine country from shippingAddress
+    let destinationCountry = 'India';
+    if (typeof shippingAddress === 'object' && shippingAddress?.country) {
+      destinationCountry = shippingAddress.country;
+    } else if (typeof shippingAddress === 'string') {
+      try {
+        const parsed = JSON.parse(shippingAddress);
+        if (parsed.country) destinationCountry = parsed.country;
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    // Authoritative Shipping Calculation
+    const shippingPrice = await calculateAuthoritativeShipping(itemsForShipping, destinationCountry, tx);
+
+    // Authoritative Tax Calculation
+    const taxSettings = await getTaxSettingsHelper(tx);
+    let taxPrice = 0;
+    if (taxSettings.enableGst) {
+      const isIndian = destinationCountry.trim().toLowerCase() === 'india';
+      if (isIndian) {
+        taxPrice = itemsPrice > taxSettings.indianThreshold
+          ? itemsPrice * (taxSettings.indianHighRate / 100)
+          : itemsPrice * (taxSettings.indianLowRate / 100);
+      } else {
+        taxPrice = itemsPrice * (taxSettings.nonIndianRate / 100);
+      }
+    }
+
+    const totalPrice = Number((itemsPrice - couponDiscount + taxPrice + shippingPrice).toFixed(2));
+    const mfgPayment = totalMfgPayment;
+    const paymentStatus = paymentMethod === 'COD' ? 'PENDING' : 'SUCCESSFUL';
+
+    const order = await tx.order.create({
+      data: {
+        userId,
+        shippingAddress: typeof shippingAddress === 'string' ? shippingAddress : JSON.stringify(shippingAddress),
+        taxPrice: Number(taxPrice.toFixed(2)),
+        shippingPrice: Number(shippingPrice.toFixed(2)),
+        totalPrice,
+        mfgPayment,
+        paymentStatus,
+        status: 'IN_PROGRESS',
+        items: {
+          create: itemsToCreate
+        }
+      },
+      include: {
+        items: {
+          include: { product: true }
+        },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            mobile: true,
+            country: true
+          }
+        },
+        manufacturer: {
+          select: {
+            id: true,
+            fullName: true,
+            companyName: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    return formatOrderForUi(order);
+  }, { maxWait: 10000, timeout: 20000 });
 };
 
 /**
@@ -736,24 +849,52 @@ export const completeOrder = async (id, completedDate) => {
 };
 
 /**
- * Cancels order directly with reason.
+ * Cancels order directly with reason and replenishes inventory.
  */
 export const cancelOrder = async (id, cancelReason) => {
-  const updated = await prisma.order.update({
-    where: { id },
-    data: {
-      status: 'CANCELED',
-      cancelReason: cancelReason || 'Cancelled by Admin',
-      cancelRequested: false
-    },
-    include: {
-      items: { include: { product: true } },
-      user: true,
-      manufacturer: true
+  return await prisma.$transaction(async (tx) => {
+    const existing = await tx.order.findUnique({
+      where: { id },
+      include: { items: true }
+    });
+    if (!existing) {
+      throw new Error('Order not found');
     }
-  });
+    if (existing.status === 'CANCELED') {
+      return formatOrderForUi(existing);
+    }
 
-  return formatOrderForUi(updated);
+    // Replenish stock for all items
+    if (Array.isArray(existing.items)) {
+      for (const item of existing.items) {
+        if (item.productId && item.quantity > 0) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: { increment: item.quantity },
+              inStock: true
+            }
+          });
+        }
+      }
+    }
+
+    const updated = await tx.order.update({
+      where: { id },
+      data: {
+        status: 'CANCELED',
+        cancelReason: cancelReason || 'Cancelled by Admin',
+        cancelRequested: false
+      },
+      include: {
+        items: { include: { product: true } },
+        user: true,
+        manufacturer: true
+      }
+    });
+
+    return formatOrderForUi(updated);
+  }, { maxWait: 10000, timeout: 20000 });
 };
 
 /**

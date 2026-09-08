@@ -275,22 +275,64 @@ export const getAdminWalletTransactions = async (req, res) => {
 // @access  Private/Admin
 export const markAdminTransactionPaid = async (req, res) => {
   try {
-    const order = await findOrderByIdOrTxn(req.params.id);
+    const targetId = req.params?.id || req.body?.txnId || req.body?.id;
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: 'Transaction ID is required' });
+    }
+
+    const order = await findOrderByIdOrTxn(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Transaction / Order not found' });
     }
 
+    // Financial Safety Guard: Cannot payout cancelled order
+    if (order.status === 'CANCELED') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot process payout for cancelled order ${order.id}.`
+      });
+    }
+
+    // Financial Safety Guard: duplicate payout rejection
+    if (order.mfgPaymentStatus === 'Paid') {
+      return res.status(400).json({
+        success: false,
+        message: `Transaction ${order.id} is already marked as Paid. Duplicate payout rejected.`
+      });
+    }
+
     const now = new Date();
     const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    await prisma.order.update({
-      where: { id: order.id },
+    // Atomic conditional update in PostgreSQL to eliminate payout race conditions
+    const updateResult = await prisma.order.updateMany({
+      where: {
+        id: order.id,
+        mfgPaymentStatus: { not: 'Paid' },
+        status: { not: 'CANCELED' }
+      },
       data: {
         mfgPaymentStatus: 'Paid',
         mfgPaidDate: formattedDate
       }
     });
+
+    if (updateResult.count === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Transaction ${order.id} is already marked as Paid or was cancelled. Duplicate payout rejected.`
+      });
+    }
+
+    // Return updated transactions list for UI, or structured response if requested
+    if (req.query?.format === 'item' || req.body?.format === 'item') {
+      return res.status(200).json({
+        success: true,
+        message: 'Payout marked as Paid successfully',
+        data: { id: order.id, mfgPaymentStatus: 'Paid', mfgPaidDate: formattedDate }
+      });
+    }
 
     // Return the fresh transactions list
     return getAdminWalletTransactions(req, res);
@@ -311,40 +353,47 @@ export const toggleAdminTransactionAdjustment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Transaction / Order not found' });
     }
 
-    const currentlyAdjusted = Boolean(
-      order.priceAdjustmentStatus === 'Approved' ||
-      (order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0)
-    );
-
-    const defaultAdj = 300.0;
-    let newMfgPayment;
-    let newAdjAmount;
-    let newStatus;
-    let newReason;
-
-    if (currentlyAdjusted) {
-      // Toggle off
-      const adjToSubtract = order.priceAdjustmentAmount || defaultAdj;
-      newMfgPayment = Math.max(0, (order.mfgPayment || 0) - adjToSubtract);
-      newAdjAmount = 0;
-      newStatus = 'None';
-      newReason = null;
-    } else {
-      // Toggle on
-      newMfgPayment = (order.mfgPayment || 0) + defaultAdj;
-      newAdjAmount = defaultAdj;
-      newStatus = 'Approved';
-      newReason = 'Custom Specification Surcharge';
-    }
-
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        mfgPayment: newMfgPayment,
-        priceAdjustmentAmount: newAdjAmount,
-        priceAdjustmentStatus: newStatus,
-        priceAdjustmentReason: newReason
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.order.findUnique({ where: { id: order.id } });
+      if (!current) {
+        throw new Error('Order not found');
       }
+
+      const currentlyAdjusted = Boolean(
+        current.priceAdjustmentStatus === 'Approved' ||
+        (current.priceAdjustmentAmount && current.priceAdjustmentAmount > 0)
+      );
+
+      const defaultAdj = 300.0;
+      let newMfgPayment;
+      let newAdjAmount;
+      let newStatus;
+      let newReason;
+
+      if (currentlyAdjusted) {
+        // Toggle off
+        const adjToSubtract = current.priceAdjustmentAmount || defaultAdj;
+        newMfgPayment = Math.max(0, (current.mfgPayment || 0) - adjToSubtract);
+        newAdjAmount = 0;
+        newStatus = 'None';
+        newReason = null;
+      } else {
+        // Toggle on
+        newMfgPayment = (current.mfgPayment || 0) + defaultAdj;
+        newAdjAmount = defaultAdj;
+        newStatus = 'Approved';
+        newReason = 'Custom Specification Surcharge';
+      }
+
+      return await tx.order.update({
+        where: { id: current.id },
+        data: {
+          mfgPayment: newMfgPayment,
+          priceAdjustmentAmount: newAdjAmount,
+          priceAdjustmentStatus: newStatus,
+          priceAdjustmentReason: newReason
+        }
+      });
     });
 
     // Return the fresh transactions list

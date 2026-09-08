@@ -5,17 +5,23 @@ import {
   getCoupons,
   createCoupon,
   toggleCouponStatus,
-  deleteCoupon
+  deleteCoupon,
+  validateCoupon
 } from '../controllers/coupon.controller.js';
 
 const router = express.Router();
 
+// All coupon endpoints require authentication
 router.use(protectRoute);
-router.use(adminRoute);
 
-router.get('/', getCoupons);
-router.post('/', createCoupon);
-router.patch('/:id/status', toggleCouponStatus);
-router.delete('/:id', deleteCoupon);
+// Coupon validation can be used by customers during checkout
+router.post('/validate', validateCoupon);
+
+// Administrative coupon management
+router.get('/', adminRoute, getCoupons);
+router.post('/', adminRoute, createCoupon);
+router.patch('/:id/status', adminRoute, toggleCouponStatus);
+router.delete('/:id', adminRoute, deleteCoupon);
 
 export default router;
+

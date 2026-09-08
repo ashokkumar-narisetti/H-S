@@ -42,12 +42,13 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      const { shippingAddress, paymentMethod } = req.body;
+      const { shippingAddress, paymentMethod, couponCode } = req.body;
       createdOrder = await orderService.createCheckoutOrder(
         orderItems,
         shippingAddress,
         paymentMethod,
-        userId
+        userId,
+        couponCode
       );
     }
 
@@ -426,13 +427,22 @@ export const getOrderById = async (req, res) => {
     }
 
     const userRole = (req.user?.role || '').toUpperCase();
-    if (order.orderedBy !== req.user.id && userRole !== 'ADMIN' && userRole !== 'MANUFACTURER') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to view this order',
-        data: null,
-        errors: ['Forbidden']
-      });
+    if (userRole === 'MANUFACTURER') {
+      if (order.manufacturerId && order.manufacturerId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: Access denied to orders assigned to another manufacturer',
+          code: 'FORBIDDEN'
+        });
+      }
+    } else if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      if (order.orderedBy !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You do not have permission to view this order',
+          code: 'FORBIDDEN'
+        });
+      }
     }
 
     return res.status(200).json({
