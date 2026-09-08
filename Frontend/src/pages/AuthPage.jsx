@@ -145,7 +145,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex bg-background pt-16 lg:pt-0">
       {/* Left side: Image (hidden on mobile) */}
       <div className="hidden lg:block lg:w-1/2 relative">
-        <img src={wallpaper} alt="H&S Wallpaper" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="/auth-side.png" alt="H&S Wallpaper" className="absolute inset-0 w-full h-full object-cover" />
       </div>
 
       {/* Right side: Form */}
