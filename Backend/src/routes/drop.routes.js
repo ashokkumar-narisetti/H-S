@@ -14,11 +14,11 @@ import {
 const router = express.Router();
 
 // Public routes
-router.get('/summary', getCatalogSummary);
 router.get('/', getDrops);
 router.get('/:id', getDropById);
 
 // Admin routes
+router.get('/summary', protectRoute, adminRoute, getCatalogSummary);
 router.post('/', protectRoute, adminRoute, createDrop);
 router.put('/:id', protectRoute, adminRoute, updateDrop);
 router.patch('/:id/status', protectRoute, adminRoute, updateDropStatus);

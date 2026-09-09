@@ -33,7 +33,7 @@ import {
 const router = express.Router();
 
 // Summary & Metadata
-router.get('/summary', getCatalogSummary);
+router.get('/summary', protectRoute, adminRoute, getCatalogSummary);
 router.get('/categories', getCategories);
 router.post('/categories', protectRoute, adminRoute, createCategory);
 router.put('/categories/rules', protectRoute, adminRoute, updateCategoryWeightRules);
