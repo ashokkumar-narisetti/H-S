@@ -486,8 +486,13 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       ? shippingAddress
       : JSON.stringify(shippingAddress || {});
 
+    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const customOrderId = `HS-${dateStr}-${randomHex}`;
+
     const order = await tx.order.create({
       data: {
+        id: customOrderId,
         userId: targetUserId,
         manufacturerId: validManufacturerId,
         shippingAddress: formattedShippingAddress,
@@ -588,29 +593,9 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
         throw new Error(`Product ${item.name || item.productId} not found`);
       }
 
-      // Atomic conditional decrement in PostgreSQL to prevent overselling/race conditions
-      const updateResult = await tx.product.updateMany({
-        where: {
-          id: product.id,
-          stock: { gte: item.quantity },
-          inStock: true
-        },
-        data: {
-          stock: { decrement: item.quantity }
-        }
-      });
-
-      if (updateResult.count === 0) {
-        throw new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}, requested: ${item.quantity}`);
-      }
-
-      // Toggle inStock flag if depleted
-      const refreshed = await tx.product.findUnique({ where: { id: product.id }, select: { stock: true } });
-      if (refreshed && refreshed.stock <= 0) {
-        await tx.product.update({
-          where: { id: product.id },
-          data: { inStock: false }
-        });
+      // Check if product is in stock via the boolean flag
+      if (!product.inStock) {
+        throw new Error(`"${product.name}" is currently Out of Stock.`);
       }
 
       const unitPrice = product.price;
@@ -694,8 +679,13 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
     const mfgPayment = totalMfgPayment;
     const paymentStatus = paymentMethod === 'COD' ? 'PENDING' : 'SUCCESSFUL';
 
+    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const customOrderId = `HS-${dateStr}-${randomHex}`;
+
     const order = await tx.order.create({
       data: {
+        id: customOrderId,
         userId,
         shippingAddress: typeof shippingAddress === 'string' ? shippingAddress : JSON.stringify(shippingAddress),
         taxPrice: Number(taxPrice.toFixed(2)),

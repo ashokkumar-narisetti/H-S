@@ -50,14 +50,14 @@ export default function TrackingDetailPage() {
   return (
     <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="mb-8">
-        <Link to="/" className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:text-muted-foreground transition-colors w-fit border-b border-black pb-0.5">
-          <ArrowLeft className="w-4 h-4" /> Back to Shop
+        <Link to="/track-orders" className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:text-muted-foreground transition-colors w-fit border-b border-black pb-0.5">
+          <ArrowLeft className="w-4 h-4" /> Back to Order History
         </Link>
       </div>
 
       <div className="flex justify-between items-end mb-8 border-b border-border pb-6">
         <h1 className="font-heading text-3xl uppercase font-bold tracking-tight">Order Tracking</h1>
-        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{order.id?.slice(-6)}</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Order #{order.id}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -70,32 +70,45 @@ export default function TrackingDetailPage() {
 
             {/* Horizontal Timeline */}
             <div className="relative mb-16 px-2 sm:px-8">
-              {/* Background dotted line */}
-              <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
-              {/* Active solid line */}
-              <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: order.status === 'DELIVERED' ? '100%' : (order.status === 'SHIPPING' ? '50%' : '0%'), marginTop: '-1px' }}></div>
-              <div className="flex justify-between relative z-10">
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
-                    <Check className="w-4 h-4" />
-                  </div>
-                  <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">In Progress</p>
-                  <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(order.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full border-4 ${(order.status === 'SHIPPING' || order.status === 'DELIVERED') ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${(order.status === 'SHIPPING' || order.status === 'DELIVERED') ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
-                    {order.status === 'SHIPPING' && <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>}
-                    {order.status === 'DELIVERED' && <Check className="w-4 h-4 text-white" />}
-                  </div>
-                  <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${order.status === 'IN_PROGRESS' && 'text-muted-foreground'}`}>Shipping</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full border-4 ${order.status === 'DELIVERED' ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${order.status === 'DELIVERED' ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
-                    {order.status === 'DELIVERED' && <Check className="w-4 h-4 text-white" />}
-                  </div>
-                  <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${order.status !== 'DELIVERED' && 'text-muted-foreground'}`}>Delivery</p>
-                </div>
-              </div>
+              {(() => {
+                const status = (order.status || '').toUpperCase();
+                const isDelivered = status === 'DELIVERED';
+                const isShipping = status === 'SHIPPING' || status === 'SHIPPED';
+                const isInProgress = !isDelivered && !isShipping;
+                
+                const validDate = order.createdAt || order.date || Date.now();
+
+                return (
+                  <>
+                    {/* Background dotted line */}
+                    <div className="absolute top-4 left-10 right-10 h-0.5 border-t-2 border-dashed border-border z-0"></div>
+                    {/* Active solid line */}
+                    <div className="absolute top-4 left-10 h-1 bg-black transition-all duration-1000 z-0" style={{ width: isDelivered ? '100%' : (isShipping ? '50%' : '0%'), marginTop: '-1px' }}></div>
+                    <div className="flex justify-between relative z-10">
+                      <div className="flex flex-col items-center">
+                        <div className="w-8 h-8 rounded-full border-4 border-black bg-black text-white flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.2)]">
+                          <Check className="w-4 h-4" />
+                        </div>
+                        <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">In Progress</p>
+                        <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(validDate).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full border-4 ${(isShipping || isDelivered) ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${(isShipping || isDelivered) ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
+                          {isShipping && <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>}
+                          {isDelivered && <Check className="w-4 h-4 text-white" />}
+                        </div>
+                        <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${isInProgress && 'text-muted-foreground'}`}>Shipping</p>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full border-4 ${isDelivered ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${isDelivered ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
+                          {isDelivered && <Check className="w-4 h-4 text-white" />}
+                        </div>
+                        <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${!isDelivered && 'text-muted-foreground'}`}>Delivery</p>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
           </div>

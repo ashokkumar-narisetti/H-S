@@ -54,10 +54,13 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const categories = storeCategories.map(cat => ({
-    name: cat,
-    path: `/category/${cat}` // Generates /category/T-Shirts, /category/Hoodies, etc.
-  }));
+  const categories = storeCategories.map(cat => {
+    const catName = typeof cat === 'string' ? cat : cat.name;
+    return {
+      name: catName,
+      path: `/category/${catName}`
+    };
+  });
 
   const handleConfirmLogout = () => {
     logout();
