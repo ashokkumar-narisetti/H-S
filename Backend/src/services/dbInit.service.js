@@ -23,18 +23,10 @@ export const initCustomTables = async () => {
       );
     `);
 
-    // Seed default coupon if empty
-    const couponCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM "Coupon"`);
-    if (couponCount[0]?.count === 0) {
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO "Coupon" ("id", "code", "type", "discountValue", "discountType", "minSpend", "usageLimit", "usageCount", "expiryDate", "status")
-        VALUES 
-        ('CPN-101', 'SUMMER20', 'Public', 20, 'Percentage', 999, 500, 42, '2026-12-31', 'Active'),
-        ('CPN-102', 'WELCOME10', 'Public', 10, 'Percentage', 499, 1000, 150, '2026-12-31', 'Active'),
-        ('CPN-103', 'VIP500', 'Private', 500, 'Fixed Amount', 2499, 50, 12, '2026-12-31', 'Active')
-        ON CONFLICT ("code") DO NOTHING;
-      `);
-    }
+    // Remove any historical dummy seed coupons from database
+    await prisma.$executeRawUnsafe(`
+      DELETE FROM "Coupon" WHERE "id" IN ('CPN-101', 'CPN-102', 'CPN-103') OR "code" IN ('SUMMER20', 'WELCOME10', 'VIP500');
+    `);
 
     // 2. Initialize Setting table in PostgreSQL
     await prisma.$executeRawUnsafe(`

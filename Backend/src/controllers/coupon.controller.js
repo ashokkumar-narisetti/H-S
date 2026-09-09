@@ -8,34 +8,45 @@ export const getCoupons = async (req, res) => {
   try {
     await initCustomTables();
 
-    const coupons = await prisma.$queryRawUnsafe(`
-      SELECT 
-        "id", "code", "type", 
-        "discountValue"::float as "discountValue", 
-        "discountType", 
-        "minSpend"::float as "minSpend", 
-        "usageLimit"::int as "usageLimit", 
-        "usageCount"::int as "usageCount", 
-        "expiryDate", "status",
-        TO_CHAR("createdAt", 'YYYY-MM-DD') as "createdAt"
-      FROM "Coupon"
-      ORDER BY "createdAt" DESC
-    `);
+    const coupons = await prisma.coupon.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const formattedCoupons = coupons.map(c => ({
+      id: c.id,
+      code: c.code,
+      type: c.type,
+      discountValue: Number(c.discountValue) || 0,
+      discountType: c.discountType,
+      minSpend: Number(c.minSpend) || 0,
+      usageLimit: Number(c.usageLimit) || 0,
+      usageCount: Number(c.usageCount) || 0,
+      expiryDate: c.expiryDate || '2026-12-31',
+      status: c.status,
+      createdAt: c.createdAt ? c.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    }));
 
     const summary = {
-      totalCoupons: coupons.length,
-      publicCoupons: coupons.filter(c => c.type === 'Public').length,
-      privateCoupons: coupons.filter(c => c.type === 'Private').length,
-      activeCoupons: coupons.filter(c => c.status === 'Active').length
+      totalCoupons: formattedCoupons.length,
+      publicCoupons: formattedCoupons.filter(c => c.type === 'Public').length,
+      privateCoupons: formattedCoupons.filter(c => c.type === 'Private').length,
+      activeCoupons: formattedCoupons.filter(c => c.status === 'Active').length
     };
 
-    res.json({
+    return res.status(200).json({
+      success: true,
+      message: 'Coupons retrieved successfully',
       summary,
-      coupons
+      coupons: formattedCoupons
     });
   } catch (error) {
-    console.error('Error fetching coupons:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to retrieve coupons from database' });
+    console.error('Error fetching coupons:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve coupons from database',
+      summary: { totalCoupons: 0, publicCoupons: 0, privateCoupons: 0, activeCoupons: 0 },
+      coupons: []
+    });
   }
 };
 
@@ -61,31 +72,53 @@ export const createCoupon = async (req, res) => {
     }
 
     const cleanCode = code.trim().toUpperCase();
-    const id = `CPN-${Math.floor(100 + Math.random() * 900)}`;
 
-    await prisma.$executeRawUnsafe(`
-      INSERT INTO "Coupon" ("id", "code", "type", "discountValue", "discountType", "minSpend", "usageLimit", "usageCount", "expiryDate", "status")
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8, 'Active')
-    `, id, cleanCode, type, Number(discountValue), discountType, Number(minSpend), Number(usageLimit), expiryDate);
+    // Check for duplicate code
+    const existing = await prisma.coupon.findUnique({
+      where: { code: cleanCode }
+    });
 
-    const created = {
-      id,
-      code: cleanCode,
-      type,
-      discountValue: Number(discountValue),
-      discountType,
-      minSpend: Number(minSpend),
-      usageLimit: Number(usageLimit),
-      usageCount: 0,
-      expiryDate,
-      status: 'Active',
-      createdAt: new Date().toISOString().split('T')[0]
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: `Coupon code '${cleanCode}' already exists.`
+      });
+    }
+
+    const id = `CPN-${Date.now().toString().slice(-6)}`;
+
+    const created = await prisma.coupon.create({
+      data: {
+        id,
+        code: cleanCode,
+        type,
+        discountValue: Number(discountValue) || 0,
+        discountType,
+        minSpend: Number(minSpend) || 0,
+        usageLimit: Number(usageLimit) || 0,
+        usageCount: 0,
+        expiryDate: expiryDate || '2026-12-31',
+        status: 'Active'
+      }
+    });
+
+    const formatted = {
+      ...created,
+      createdAt: created.createdAt ? created.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     };
 
-    res.status(201).json(created);
+    return res.status(201).json({
+      success: true,
+      message: 'Coupon created successfully',
+      coupon: formatted,
+      ...formatted
+    });
   } catch (error) {
-    console.error('Error creating coupon:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to create coupon in database' });
+    console.error('Error creating coupon:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create coupon in database'
+    });
   }
 };
 
@@ -98,21 +131,30 @@ export const toggleCouponStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const existing = await prisma.$queryRawUnsafe(`SELECT * FROM "Coupon" WHERE "id" = $1`, id);
-    if (!existing || existing.length === 0) {
+    const existing = await prisma.coupon.findUnique({
+      where: { id }
+    });
+
+    if (!existing) {
       return res.status(404).json({ success: false, message: 'Coupon not found' });
     }
 
-    const newStatus = status || (existing[0].status === 'Active' ? 'Disabled' : 'Active');
+    const newStatus = status || (existing.status === 'Active' ? 'Disabled' : 'Active');
 
-    await prisma.$executeRawUnsafe(`
-      UPDATE "Coupon" SET "status" = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = $2
-    `, newStatus, id);
+    const updated = await prisma.coupon.update({
+      where: { id },
+      data: { status: newStatus }
+    });
 
-    res.json({ success: true, message: `Coupon status updated to ${newStatus}`, status: newStatus });
+    return res.status(200).json({
+      success: true,
+      message: `Coupon status updated to ${newStatus}`,
+      status: newStatus,
+      coupon: updated
+    });
   } catch (error) {
-    console.error('Error toggling coupon status:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to toggle coupon status' });
+    console.error('Error toggling coupon status:', error);
+    return res.status(500).json({ success: false, message: 'Failed to toggle coupon status' });
   }
 };
 
@@ -177,8 +219,8 @@ export const validateCoupon = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error validating coupon:', error.message);
-    res.status(500).json({ success: false, message: 'Server error validating coupon' });
+    console.error('Error validating coupon:', error);
+    return res.status(500).json({ success: false, message: 'Server error validating coupon' });
   }
 };
 
@@ -190,12 +232,24 @@ export const deleteCoupon = async (req, res) => {
     await initCustomTables();
     const { id } = req.params;
 
-    await prisma.$executeRawUnsafe(`DELETE FROM "Coupon" WHERE "id" = $1`, id);
-    res.json({ success: true, message: 'Coupon deleted successfully' });
+    const existing = await prisma.coupon.findUnique({
+      where: { id }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Coupon not found' });
+    }
+
+    await prisma.coupon.delete({
+      where: { id }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon deleted successfully'
+    });
   } catch (error) {
-    console.error('Error deleting coupon:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to delete coupon' });
+    console.error('Error deleting coupon:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete coupon' });
   }
 };
-
-
