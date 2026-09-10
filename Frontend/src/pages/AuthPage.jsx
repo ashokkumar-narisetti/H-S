@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import toast from 'react-hot-toast';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { useRef } from 'react';
 import { COUNTRIES } from '../data/countries';
 import wallpaper from '../assets/H-S-Wallpaper.png';
@@ -96,6 +96,8 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(location.pathname === '/login');
   const [country, setCountry] = useState('India');
   const [dob, setDob] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const selectedCountryObj = COUNTRIES.find(c => c.name === country) || COUNTRIES.find(c => c.name === 'India');
   const countryCode = selectedCountryObj?.code || '+91';
@@ -166,7 +168,17 @@ export default function AuthPage() {
         {isLogin ? (
           <>
             <input required type="email" name="email" placeholder="Email Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="password" name="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <div className="relative">
+              <input required type={showPassword ? "text" : "password"} name="password" placeholder="Password" className="w-full p-4 pr-12 border border-border bg-background focus:outline-none focus:border-foreground" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -213,8 +225,28 @@ export default function AuthPage() {
               </div>
             </div>
 
-            <input required type="password" name="password" placeholder="Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
-            <input required type="password" name="confirmPassword" placeholder="Confirm Password" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
+            <div className="relative">
+              <input required type={showPassword ? "text" : "password"} name="password" placeholder="Password" className="w-full p-4 pr-12 border border-border bg-background focus:outline-none focus:border-foreground" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            <div className="relative">
+              <input required type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="Confirm Password" className="w-full p-4 pr-12 border border-border bg-background focus:outline-none focus:border-foreground" />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
             
             <TermsAccordion />
             <label className="flex items-start gap-3 mt-4 cursor-pointer">
