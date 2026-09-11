@@ -185,6 +185,109 @@ export const resolveColorAssets = (product, orderColor) => {
     backImg = product?.images?.[1] || product?.images?.[0] || product?.coverPhoto || '';
   }
 
+  // Resolve all configured print placements dynamically
+  let printPlacements = [];
+
+  const extractValidPlacement = (item, defaultPos, idx) => {
+    if (!item) return null;
+    const pType = item.printType || item.method || 'DTF';
+    const pPos = item.printPosition || defaultPos;
+    const dFile = item.designFile || null;
+    const mUp = item.mockup || null;
+    const hasData = item.printType || item.printPosition || item.designFile || item.mockup;
+    if (!hasData) return null;
+    return {
+      placementIndex: idx + 1,
+      name: `Print Placement ${idx + 1}`,
+      printType: pType,
+      printPosition: pPos,
+      designFile: dFile,
+      mockup: mUp,
+      specs: typeof item.specs === 'string' && item.specs
+        ? item.specs
+        : (item.frontPrintSpec || item.printSpecs || `${pType} print on ${pPos}`)
+    };
+  };
+
+  // 1. Check matchedColor.printSpecs array
+  if (matchedColor && typeof matchedColor === 'object') {
+    if (Array.isArray(matchedColor.printSpecs) && matchedColor.printSpecs.length > 0) {
+      matchedColor.printSpecs.forEach((ps, idx) => {
+        const placement = extractValidPlacement(ps, idx === 0 ? 'Front Center' : 'Upper Back Center', idx);
+        if (placement) {
+          printPlacements.push(placement);
+        }
+      });
+    }
+
+    // 2. If no valid placement from printSpecs array, check single fields on matchedColor
+    if (printPlacements.length === 0 && (matchedColor.printType || matchedColor.printPosition || matchedColor.designFile || matchedColor.mockup)) {
+      const placement = extractValidPlacement(matchedColor, 'Front Center', 0);
+      if (placement) {
+        printPlacements.push(placement);
+      }
+    }
+  }
+
+  // 3. If still empty, check product.manufactureSpec
+  if (printPlacements.length === 0 && product?.manufactureSpec) {
+    if (Array.isArray(product.manufactureSpec.printSpecs) && product.manufactureSpec.printSpecs.length > 0) {
+      product.manufactureSpec.printSpecs.forEach((ps, idx) => {
+        const placement = extractValidPlacement(ps, idx === 0 ? 'Front Center' : 'Upper Back Center', idx);
+        if (placement) {
+          printPlacements.push(placement);
+        }
+      });
+    } else if (product.manufactureSpec.printType || product.manufactureSpec.printPosition || product.manufactureSpec.designFile || product.manufactureSpec.mockup) {
+      const placement = extractValidPlacement(product.manufactureSpec, 'Front Center', 0);
+      if (placement) {
+        printPlacements.push(placement);
+      }
+    }
+  }
+
+  // 4. If still empty, check product root fields (designFile or printType)
+  if (printPlacements.length === 0 && (product?.designFile || product?.printType)) {
+    printPlacements.push({
+      placementIndex: 1,
+      name: 'Print Placement 1',
+      printType: product.printType || 'DTF',
+      printPosition: product.printPosition || 'Front Center',
+      designFile: product.designFile || null,
+      mockup: frontImg || null,
+      specs: `${product.printType || 'DTF'} print on ${product.printPosition || 'Front Center'}`
+    });
+  }
+
+  // 5. If STILL empty, single fallback placement based on resolved printType/designFile
+  if (printPlacements.length === 0) {
+    printPlacements.push({
+      placementIndex: 1,
+      name: 'Print Placement 1',
+      printType: printType || 'DTF',
+      printPosition: printPosition || 'Front Center',
+      designFile: designFile || null,
+      mockup: frontImg || null,
+      specs: printSpecs || `${printType} standard artwork print (10.5 in x 14 in)`
+    });
+  }
+
+  // Synchronize primary placement scalar properties for backwards compatibility
+  if (printPlacements.length > 0) {
+    if (!designFile && printPlacements[0].designFile) {
+      designFile = printPlacements[0].designFile;
+    }
+    if (printPlacements[0].printType) {
+      printType = printPlacements[0].printType;
+    }
+    if (printPlacements[0].printPosition) {
+      printPosition = printPlacements[0].printPosition;
+    }
+    if (printPlacements[0].specs) {
+      printSpecs = printPlacements[0].specs;
+    }
+  }
+
   return {
     frontImg,
     backImg,
@@ -192,6 +295,7 @@ export const resolveColorAssets = (product, orderColor) => {
     printType,
     printPosition,
     printSpecs,
+    printPlacements,
     colorCode,
     isLight,
     neckLogoFileName,
@@ -256,6 +360,44 @@ export const formatOrderForUi = (order) => {
   }
 
   // Resolve accurate manufacturer payment from DB or calculate from product catalog manufacturePrice
+  const matchedColor = colorAssets.matchedColor;
+
+  // Resolve color/product-specific catalog manufacturing price
+  const colorMfgPrice = (matchedColor && typeof matchedColor.manufacturePrice === 'number' && matchedColor.manufacturePrice > 0)
+    ? matchedColor.manufacturePrice
+    : null;
+  const productMfgPrice = (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
+    ? product.manufacturePrice
+    : null;
+  const catalogMfgPrice = colorMfgPrice || productMfgPrice;
+
+  // Resolve detailed breakdown from color or product
+  const rawBaseCost = (matchedColor && typeof matchedColor.baseCost === 'number')
+    ? matchedColor.baseCost
+    : (product.priceBreakdown && typeof product.priceBreakdown.baseCost === 'number')
+      ? product.priceBreakdown.baseCost
+      : null;
+
+  const rawPrintCost = (matchedColor && typeof matchedColor.printingCost === 'number')
+    ? matchedColor.printingCost
+    : (product.priceBreakdown && typeof product.priceBreakdown.printingCost === 'number')
+      ? product.priceBreakdown.printingCost
+      : null;
+
+  const rawShipCost = (matchedColor && typeof matchedColor.shippingCost === 'number')
+    ? matchedColor.shippingCost
+    : (product.priceBreakdown && typeof product.priceBreakdown.shippingCost === 'number')
+      ? product.priceBreakdown.shippingCost
+      : null;
+
+  const rawOtherCost = (matchedColor && typeof matchedColor.additionalCost === 'number')
+    ? matchedColor.additionalCost
+    : (product.priceBreakdown && typeof product.priceBreakdown.additionalCost === 'number')
+      ? product.priceBreakdown.additionalCost
+      : null;
+
+  const hasAnyExplicitBreakdown = (rawBaseCost !== null || rawPrintCost !== null || rawShipCost !== null || rawOtherCost !== null);
+
   let resolvedMfgPayment = (typeof order.mfgPayment === 'number' && order.mfgPayment > 0)
     ? order.mfgPayment
     : 0;
@@ -263,17 +405,33 @@ export const formatOrderForUi = (order) => {
   if (resolvedMfgPayment === 0 && Array.isArray(order.items) && order.items.length > 0) {
     let computedMfg = 0;
     for (const it of order.items) {
-      const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
-        ? it.product.manufacturePrice
-        : Math.round((it.price || it.product?.price || 0) * 0.6);
+      const itColorAssets = resolveColorAssets(it.product || {}, it.color);
+      const itColorMfg = itColorAssets.matchedColor && typeof itColorAssets.matchedColor.manufacturePrice === 'number' && itColorAssets.matchedColor.manufacturePrice > 0
+        ? itColorAssets.matchedColor.manufacturePrice
+        : null;
+      const unitMfg = itColorMfg
+        || ((typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
+          ? it.product.manufacturePrice
+          : Math.round((it.price || it.product?.price || 0) * 0.6));
       computedMfg += unitMfg * (it.quantity || 1);
     }
     resolvedMfgPayment = computedMfg;
   }
 
   if (resolvedMfgPayment === 0) {
-    resolvedMfgPayment = Math.round((order.totalPrice || 100) * 0.6);
+    resolvedMfgPayment = catalogMfgPrice || Math.round((order.totalPrice || 100) * 0.6);
   }
+
+  // Calculate authoritative breakdown costs
+  const baseProductCost = rawBaseCost !== null
+    ? rawBaseCost
+    : (hasAnyExplicitBreakdown
+        ? Math.max(0, (catalogMfgPrice || resolvedMfgPayment) - (rawPrintCost || 0) - (rawShipCost || 0) - (rawOtherCost || 0))
+        : (catalogMfgPrice || resolvedMfgPayment));
+
+  const printCost = rawPrintCost !== null ? rawPrintCost : 0;
+  const shipCost = rawShipCost !== null ? rawShipCost : 0;
+  const otherCost = rawOtherCost !== null ? rawOtherCost : 0;
 
   return {
     id: order.id,
@@ -316,15 +474,30 @@ export const formatOrderForUi = (order) => {
       printType: colorAssets.printType,
       printPosition: colorAssets.printPosition,
       printSpecs: colorAssets.printSpecs,
+      printPlacements: colorAssets.printPlacements || [],
       colorCode: colorAssets.colorCode,
       colorName: firstItem.color || 'Standard',
+      mfgBasePrice: baseProductCost,
+      baseCost: baseProductCost,
+      printingCost: printCost,
+      shippingCost: shipCost,
+      otherCost: otherCost,
+      costBreakdown: {
+        baseCost: baseProductCost,
+        printingCost: printCost,
+        shippingCost: shipCost,
+        otherCost: otherCost,
+        total: Number((baseProductCost + printCost + shipCost + otherCost).toFixed(2))
+      },
       printingDetails: {
         method: colorAssets.printType ? `${colorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
         printType: colorAssets.printType,
         printPosition: colorAssets.printPosition,
         designFile: colorAssets.designFile || null,
         frontPrintSpec: colorAssets.printSpecs,
-        backPrintSpec: product.manufactureSpec?.backPrintSpec || 'Full graphic artwork back print (14 in x 18 in)',
+        backPrintSpec: (colorAssets.printPlacements && colorAssets.printPlacements.length > 1)
+          ? colorAssets.printPlacements[1].specs
+          : (product.manufactureSpec?.backPrintSpec || null),
         neckLogoSpec: `Inner collar neck label 2.5 in x 1.0 in (${colorAssets.isLight ? 'Black Font' : 'White Font'})`,
         neckLogoFile: colorAssets.neckLogoFileName,
         fabricGSM: product.manufactureSpec?.fabricGSM || '240 GSM 100% Ring-Spun Cotton',
@@ -348,10 +521,10 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
     orderedBy,
     fullName,
     phone,
-    country = 'United States',
+    country = 'India',
     shippingAddress,
     amountPaid = 100,
-    mfgPayment = 60,
+    mfgPayment = 0,
     status = 'In Progress',
     manufacturerId = null
   } = orderData;
@@ -370,8 +543,16 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
 
     const parsedMfgPayment = Number(mfgPayment);
     let validMfgPayment = (parsedMfgPayment > 0) ? parsedMfgPayment : 0;
-    if (!validMfgPayment && product && typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
-      validMfgPayment = product.manufacturePrice;
+    if (!validMfgPayment && product) {
+      const colorAssets = resolveColorAssets(product, color);
+      const colorMfgPrice = colorAssets.matchedColor && typeof colorAssets.matchedColor.manufacturePrice === 'number' && colorAssets.matchedColor.manufacturePrice > 0
+        ? colorAssets.matchedColor.manufacturePrice
+        : null;
+      if (colorMfgPrice) {
+        validMfgPayment = colorMfgPrice;
+      } else if (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
+        validMfgPayment = product.manufacturePrice;
+      }
     }
     if (!validMfgPayment) {
       validMfgPayment = Math.round(validAmountPaid * 0.6);

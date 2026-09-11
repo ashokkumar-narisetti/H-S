@@ -140,7 +140,8 @@ export const getMfgWalletEarnings = async (req, res) => {
     const earnings = orders.map((order, idx) => {
       const firstItem = order.items?.[0] || {};
       const payment = computeOrderMfgPayment(order);
-      const isAdjusted = Boolean(order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);
+      const adjStatus = order.priceAdjustmentStatus || 'None';
+      const isAdjusted = Boolean(adjStatus === 'Approved' && order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);
 
       return {
         id: `REC-${100 + idx + 1}`,
@@ -151,7 +152,10 @@ export const getMfgWalletEarnings = async (req, res) => {
         color: firstItem.color || 'Default',
         manufacturerPayment: payment,
         isAdjusted,
+        adjustmentStatus: adjStatus,
+        priceAdjustmentStatus: adjStatus,
         adjustmentAmount: order.priceAdjustmentAmount || 0,
+        adjustmentReason: order.priceAdjustmentReason || null,
         paymentStatus: order.mfgPaymentStatus === 'Paid' ? 'Paid' : 'Not Paid',
         paidDate: order.mfgPaidDate || null
       };
@@ -241,10 +245,8 @@ export const getAdminWalletTransactions = async (req, res) => {
     const transactions = orders.map(order => {
       const grossSale = Number(order.totalPrice) || 0;
       const mfgPay = computeOrderMfgPayment(order);
-      const isAdjusted = Boolean(
-        order.priceAdjustmentStatus === 'Approved' ||
-        (order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0)
-      );
+      const adjStatus = order.priceAdjustmentStatus || 'None';
+      const isAdjusted = Boolean(adjStatus === 'Approved' && order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);
 
       return {
         id: `TXN-${order.id.slice(0, 8).toUpperCase()}`,
@@ -254,6 +256,8 @@ export const getAdminWalletTransactions = async (req, res) => {
         grossSaleValue: grossSale,
         manufacturerPayment: mfgPay,
         isAdjusted,
+        adjustmentStatus: adjStatus,
+        priceAdjustmentStatus: adjStatus,
         adjustmentAmount: order.priceAdjustmentAmount || 0,
         adjustmentReason: order.priceAdjustmentReason || (isAdjusted ? 'Custom Specification Surcharge' : undefined),
         paymentStatus: order.mfgPaymentStatus === 'Paid' ? 'Paid' : 'Not Paid',
@@ -360,7 +364,7 @@ export const toggleAdminTransactionAdjustment = async (req, res) => {
       }
 
       const currentlyAdjusted = Boolean(
-        current.priceAdjustmentStatus === 'Approved' ||
+        current.priceAdjustmentStatus === 'Approved' &&
         (current.priceAdjustmentAmount && current.priceAdjustmentAmount > 0)
       );
 
