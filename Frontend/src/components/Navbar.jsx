@@ -143,14 +143,11 @@ export default function Navbar() {
             </span>
           </div>
 
-          {/* Mobile Right: Empty for balance */}
-          <div className="flex-1 md:hidden"></div>
-
-          {/* Desktop Right: Profile Dropdown */}
-          <div className="flex-1 hidden md:flex justify-end items-center gap-2" ref={profileRef}>
+          {/* Right: Profile Dropdown & Desktop Home */}
+          <div className="flex-1 flex justify-end items-center gap-2" ref={profileRef}>
             <Link 
               to="/" 
-              className="p-2 hover:bg-muted rounded-full transition-colors flex items-center justify-center" 
+              className="p-2 hover:bg-muted rounded-full transition-colors hidden md:flex items-center justify-center" 
               aria-label="Home"
               onClick={() => window.scrollTo(0,0)}
             >
@@ -186,6 +183,7 @@ export default function Navbar() {
                           <Link 
                             key={link.name} 
                             to={link.path}
+                            onClick={() => setIsProfileOpen(false)}
                             className="px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-muted hover:text-black transition-colors"
                           >
                             {link.name}
@@ -207,12 +205,14 @@ export default function Navbar() {
                       <div className="flex flex-col gap-2 px-4 py-2">
                         <Link 
                           to="/login"
+                          onClick={() => setIsProfileOpen(false)}
                           className="w-full text-center bg-foreground text-background py-3 text-xs font-bold uppercase tracking-widest hover:bg-black/80 transition-colors"
                         >
                           Sign In
                         </Link>
                         <Link 
                           to="/signup"
+                          onClick={() => setIsProfileOpen(false)}
                           className="w-full text-center border border-foreground text-foreground py-3 text-xs font-bold uppercase tracking-widest hover:bg-muted transition-colors"
                         >
                           Create Account
@@ -259,24 +259,6 @@ export default function Navbar() {
                       {cat.name}
                     </Link>
                   ))}
-                </div>
-              </div>
-              
-              <div className="border-t border-border pt-8">
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-6">Account</h3>
-                <div className="flex flex-col gap-4">
-                  {isAuthenticated ? (
-                    <>
-                      <Link to="/account" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Profile</Link>
-                      <Link to="/track-orders" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Orders</Link>
-                      <button onClick={handleConfirmLogout} className="text-left text-sm font-bold uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors">Logout</button>
-                    </>
-                  ) : (
-                    <>
-                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Sign In</Link>
-                      <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">Create Account</Link>
-                    </>
-                  )}
                 </div>
               </div>
             </div>

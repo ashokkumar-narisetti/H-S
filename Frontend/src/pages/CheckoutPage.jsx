@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, MapPin, Info, CheckCircle } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, Info, CheckCircle, Tag, X } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,6 +24,13 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showGstInfo, setShowGstInfo] = useState(false);
   const gstInfoRef = useRef(null);
+
+  // Coupon State
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [couponSuccess, setCouponSuccess] = useState('');
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -89,7 +96,54 @@ export default function CheckoutPage() {
     fetchTaxSettings();
   }, []);
 
+  const handleApplyCoupon = async (e) => {
+    e?.preventDefault();
+    if (!couponInput.trim()) return;
+
+    setCouponLoading(true);
+    setCouponError('');
+    setCouponSuccess('');
+
+    try {
+      const res = await axiosInstance.post('/coupons/validate', {
+        code: couponInput.trim(),
+        amount: subtotal
+      });
+
+      if (res.data?.success && res.data?.data) {
+        const data = res.data.data;
+        setAppliedCoupon(data);
+        setCouponSuccess(`Coupon '${data.code}' applied! Saved ₹${data.discountAmount}`);
+        setCouponError('');
+      }
+    } catch (err) {
+      console.error('Coupon validation error:', err);
+      const msg = err.response?.data?.message || 'Invalid or expired coupon code';
+      setCouponError(msg);
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError('');
+    setCouponSuccess('');
+  };
+
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'Percentage') {
+      discountAmount = (subtotal * appliedCoupon.discountValue) / 100;
+    } else {
+      discountAmount = Math.min(subtotal, appliedCoupon.discountValue);
+    }
+  }
+  discountAmount = Number(discountAmount.toFixed(2));
   
   const gst = cartItems.reduce((sum, item) => {
     if (!taxSettings.enableGst) return sum;
@@ -100,7 +154,7 @@ export default function CheckoutPage() {
   }, 0);
   
   const shipping = subtotal > 150 ? 0 : 10;
-  const total = subtotal + gst + shipping;
+  const total = Math.max(0, subtotal - discountAmount + gst + shipping);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState(null);
@@ -134,7 +188,8 @@ export default function CheckoutPage() {
           color: item.color
         })),
         shippingAddress: finalAddress,
-        paymentMethod: 'COD' // Bypass mode
+        paymentMethod: 'COD', // Bypass mode
+        couponCode: appliedCoupon?.code || null
       };
 
       const res = await axiosInstance.post('/orders/checkout', orderData);
@@ -310,11 +365,85 @@ export default function CheckoutPage() {
             {/* Bill Details */}
             <section className="bg-white border border-border p-6 mt-6">
               <h2 className="font-heading text-xl font-bold uppercase tracking-widest mb-6">Bill Details</h2>
+              
+              {/* Promo / Coupon Box */}
+              <div className="mb-6 pb-6 border-b border-border">
+                <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                  Have a Coupon Code?
+                </label>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 text-green-800 rounded-sm">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+                      <Tag className="w-4 h-4 text-green-600" />
+                      <span>{appliedCoupon.code}</span>
+                      <span className="text-green-600 font-normal">
+                        ({appliedCoupon.discountType === 'Percentage' ? `${appliedCoupon.discountValue}% OFF` : `₹${appliedCoupon.discountValue} OFF`})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-widest underline underline-offset-2 ml-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="ENTER COUPON CODE"
+                          value={couponInput}
+                          onChange={(e) => {
+                            setCouponInput(e.target.value.toUpperCase());
+                            setCouponError('');
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleApplyCoupon();
+                            }
+                          }}
+                          className="w-full p-3 uppercase tracking-widest text-xs border border-border focus:outline-none focus:border-foreground bg-background pr-8"
+                        />
+                        <Tag className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponLoading || !couponInput.trim()}
+                        className="px-5 py-3 bg-foreground text-background text-xs font-bold uppercase tracking-widest hover:bg-black/90 transition-colors disabled:opacity-50"
+                      >
+                        {couponLoading ? 'Checking...' : 'Apply'}
+                      </button>
+                    </div>
+                    {couponError && (
+                      <p className="text-red-500 text-[11px] font-bold uppercase tracking-widest mt-2">{couponError}</p>
+                    )}
+                  </div>
+                )}
+                {couponSuccess && (
+                  <p className="text-green-600 text-[11px] font-bold uppercase tracking-widest mt-2">{couponSuccess}</p>
+                )}
+              </div>
+
               <div className="space-y-3 text-sm mb-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                 </div>
+
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-600 font-bold">
+                    <span className="uppercase tracking-widest flex items-center gap-1">
+                      Discount ({appliedCoupon.code})
+                    </span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between relative items-center">
                   <div className="flex items-center gap-2" ref={gstInfoRef}>
                     <span className="text-muted-foreground uppercase tracking-widest">GST</span>
