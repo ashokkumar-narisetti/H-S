@@ -1042,9 +1042,6 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
         mfgPayment,
         paymentStatus,
         status: 'IN_PROGRESS',
-        couponCode: validCouponCode,
-        couponDiscount: Number(couponDiscount.toFixed(2)),
-        couponApplied: isCouponApplied,
         items: {
           create: itemsToCreate
         }
