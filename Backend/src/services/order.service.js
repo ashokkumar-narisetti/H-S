@@ -541,7 +541,13 @@ export const formatOrderForUi = (order) => {
           pantoneCodes: itColorAssets.colorCode ? `${itColorAssets.colorCode} / ${it.color || 'Standard'}` : '#1A1A1A / Standard'
         }
       },
-      product: itProduct
+      product: {
+        id: itProduct.id || null,
+        name: itProduct.name || it.name || 'Product',
+        price: itProduct.price || it.price || 0,
+        manufacturePrice: itProduct.manufacturePrice || null,
+        manufactureName: itProduct.manufactureName || null
+      }
     };
   });
 
@@ -561,6 +567,9 @@ export const formatOrderForUi = (order) => {
     ? formattedItems.map(i => i.color).join(', ')
     : (firstItem.color || 'Standard');
 
+  const resolvedTaxPrice = Number(order.taxPrice) || 0;
+  const resolvedShippingPrice = Number(order.shippingPrice) || 0;
+
   return {
     id: order.id,
     orderedDate: order.createdAt
@@ -577,6 +586,9 @@ export const formatOrderForUi = (order) => {
     shippingAddress: formattedAddress,
     amountPaid: order.totalPrice || 0,
     totalPrice: order.totalPrice || 0,
+    taxPrice: resolvedTaxPrice,
+    gstCollected: resolvedTaxPrice,
+    shippingPrice: resolvedShippingPrice,
     mfgPayment: resolvedMfgPayment,
     manufacturerId: order.manufacturerId || null,
     manufacturerName: manufacturer ? (manufacturer.companyName || manufacturer.fullName) : null,
@@ -635,8 +647,7 @@ export const formatOrderForUi = (order) => {
         fabricGSM: product.manufactureSpec?.fabricGSM || '240 GSM 100% Ring-Spun Cotton',
         pantoneCodes: colorAssets.colorCode ? `${colorAssets.colorCode} / ${firstItem.color || 'Standard'}` : '#1A1A1A / Standard'
       }
-    },
-    rawItems: order.items || order.orderItems || []
+    }
   };
 };
 

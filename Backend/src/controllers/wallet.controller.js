@@ -195,13 +195,16 @@ export const getAdminWalletMetrics = async (req, res) => {
     let manufactureEarnings = 0;
     let paidToManufacture = 0;
     let pendingPayoutToManufacture = 0;
+    let totalGstAmount = 0;
 
     orders.forEach(order => {
       const sale = Number(order.totalPrice) || 0;
       const mfgPay = computeOrderMfgPayment(order);
+      const gst = Number(order.taxPrice) || 0;
 
       grossRevenue += sale;
       manufactureEarnings += mfgPay;
+      totalGstAmount += gst;
 
       if (order.mfgPaymentStatus === 'Paid') {
         paidToManufacture += mfgPay;
@@ -217,7 +220,9 @@ export const getAdminWalletMetrics = async (req, res) => {
       manufactureEarnings: Number(manufactureEarnings.toFixed(2)),
       paidToManufacture: Number(paidToManufacture.toFixed(2)),
       pendingPayoutToManufacture: Number(pendingPayoutToManufacture.toFixed(2)),
-      ourEarnings
+      ourEarnings,
+      totalGstAmount: Number(totalGstAmount.toFixed(2)),
+      totalGst: Number(totalGstAmount.toFixed(2))
     };
 
     res.json({
@@ -251,6 +256,7 @@ export const getAdminWalletTransactions = async (req, res) => {
     const transactions = orders.map(order => {
       const grossSale = Number(order.totalPrice) || 0;
       const mfgPay = computeOrderMfgPayment(order);
+      const gstVal = Number(order.taxPrice) || 0;
       const adjStatus = order.priceAdjustmentStatus || 'None';
       const isAdjusted = Boolean(adjStatus === 'Approved' && order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);
 
@@ -261,6 +267,8 @@ export const getAdminWalletTransactions = async (req, res) => {
         manufacturerName: order.manufacturer?.companyName || order.manufacturer?.fullName || 'Unassigned',
         grossSaleValue: grossSale,
         manufacturerPayment: mfgPay,
+        gstAmount: Number(gstVal.toFixed(2)),
+        gstCollected: Number(gstVal.toFixed(2)),
         isAdjusted,
         adjustmentStatus: adjStatus,
         priceAdjustmentStatus: adjStatus,
