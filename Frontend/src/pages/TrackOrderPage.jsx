@@ -96,7 +96,15 @@ export default function TrackOrderPage() {
                 {(order.items || []).map((item, idx) => (
                   <div key={idx} className="flex gap-6 border-b border-border/40 pb-6 last:border-0 last:pb-0">
                     <div className="w-20 h-24 bg-muted relative flex-shrink-0">
-                      <img src={item.product?.images?.[0] || 'https://via.placeholder.com/150'} alt={item.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={item.image || item.productDetails?.frontViewUrl || item.product?.coverPhoto || item.product?.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80'} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80';
+                        }}
+                      />
                     </div>
                     <div className="flex-1 flex flex-col justify-center">
                       <Link to={`/product/${item.productId}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 w-fit line-clamp-1">{item.name}</Link>

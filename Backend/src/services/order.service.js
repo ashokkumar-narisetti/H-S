@@ -502,6 +502,8 @@ export const formatOrderForUi = (order) => {
       color: it.color || 'Standard',
       quantity: it.quantity || 1,
       price: typeof it.price === 'number' ? it.price : (Number(itProduct.price) || 0),
+      image: itFront,
+      images: Array.isArray(itProduct.images) && itProduct.images.length > 0 ? itProduct.images : (itFront ? [itFront] : []),
       productDetails: {
         mfgProductName: itProduct.manufactureName || itProduct.name || it.name || 'MFG Athletic Product',
         frontViewUrl: itFront,
@@ -546,7 +548,9 @@ export const formatOrderForUi = (order) => {
         name: itProduct.name || it.name || 'Product',
         price: itProduct.price || it.price || 0,
         manufacturePrice: itProduct.manufacturePrice || null,
-        manufactureName: itProduct.manufactureName || null
+        manufactureName: itProduct.manufactureName || null,
+        images: Array.isArray(itProduct.images) && itProduct.images.length > 0 ? itProduct.images : (itFront ? [itFront] : []),
+        coverPhoto: itProduct.coverPhoto || itFront || null
       }
     };
   });
