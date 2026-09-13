@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, MapPin, Info, CheckCircle, Tag, X } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, Info, CheckCircle, Tag, X, Sparkles } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,6 +31,21 @@ export default function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState('');
+  const [publicCoupons, setPublicCoupons] = useState([]);
+
+  useEffect(() => {
+    const fetchPublicCoupons = async () => {
+      try {
+        const res = await axiosInstance.get('/coupons/public');
+        if (res.data?.success && Array.isArray(res.data?.coupons)) {
+          setPublicCoupons(res.data.coupons);
+        }
+      } catch (err) {
+        console.error('Error fetching public coupons:', err);
+      }
+    };
+    fetchPublicCoupons();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -51,7 +66,7 @@ export default function CheckoutPage() {
 
   // New Address Form State
   const [newAddress, setNewAddress] = useState({
-    firstName: '', lastName: '', street: '', apt: '', city: '', zipCode: ''
+    firstName: '', lastName: '', street: '', apt: '', city: '', zipCode: '', country: 'India'
   });
 
   useEffect(() => {
@@ -79,7 +94,8 @@ export default function CheckoutPage() {
     enableGst: true,
     indianThreshold: 2500,
     indianLowRate: 5,
-    indianHighRate: 18
+    indianHighRate: 18,
+    nonIndianRate: 0
   });
 
   useEffect(() => {
@@ -96,9 +112,10 @@ export default function CheckoutPage() {
     fetchTaxSettings();
   }, []);
 
-  const handleApplyCoupon = async (e) => {
+  const handleApplyCoupon = async (e, overrideCode = null) => {
     e?.preventDefault();
-    if (!couponInput.trim()) return;
+    const codeToApply = (overrideCode || couponInput).trim();
+    if (!codeToApply) return;
 
     setCouponLoading(true);
     setCouponError('');
@@ -106,13 +123,14 @@ export default function CheckoutPage() {
 
     try {
       const res = await axiosInstance.post('/coupons/validate', {
-        code: couponInput.trim(),
+        code: codeToApply,
         amount: subtotal
       });
 
       if (res.data?.success && res.data?.data) {
         const data = res.data.data;
         setAppliedCoupon(data);
+        setCouponInput(data.code);
         setCouponSuccess(`Coupon '${data.code}' applied! Saved ₹${data.discountAmount}`);
         setCouponError('');
       }
@@ -145,12 +163,25 @@ export default function CheckoutPage() {
   }
   discountAmount = Number(discountAmount.toFixed(2));
   
+  // Destination country determined from selected order shipping address
+  const currentShippingCountry = (selectedAddress && !isChangingAddress
+    ? selectedAddress.country
+    : (newAddress.country || 'India')) || 'India';
+
+  const isIndianDestination = currentShippingCountry.trim().toLowerCase() === 'india';
+
   const gst = cartItems.reduce((sum, item) => {
     if (!taxSettings.enableGst) return sum;
-    const rate = item.price > taxSettings.indianThreshold 
-      ? (taxSettings.indianHighRate / 100) 
-      : (taxSettings.indianLowRate / 100);
-    return sum + (item.price * item.quantity * rate);
+    if (isIndianDestination) {
+      const rate = item.price > taxSettings.indianThreshold 
+        ? (taxSettings.indianHighRate / 100) 
+        : (taxSettings.indianLowRate / 100);
+      return sum + (item.price * item.quantity * rate);
+    } else {
+      const nonIndianRate = Number(taxSettings.nonIndianRate) || 0;
+      const rate = nonIndianRate / 100;
+      return sum + (item.price * item.quantity * rate);
+    }
   }, 0);
   
   const shipping = subtotal > 150 ? 0 : 10;
@@ -164,19 +195,19 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     
     try {
-      const finalAddress = selectedAddress ? {
+      const finalAddress = (selectedAddress && !isChangingAddress) ? {
         name: 'User',
         street: selectedAddress.street,
         city: selectedAddress.city,
         state: selectedAddress.state,
         zipCode: selectedAddress.zipCode,
-        country: selectedAddress.country
+        country: selectedAddress.country || 'India'
       } : {
         name: `${newAddress.firstName} ${newAddress.lastName}`,
         street: `${newAddress.street} ${newAddress.apt}`,
         city: newAddress.city,
         zipCode: newAddress.zipCode,
-        country: 'India'
+        country: newAddress.country || 'India'
       };
 
       const orderData = {
@@ -245,7 +276,8 @@ export default function CheckoutPage() {
                       <Link to={`/product/${item.id}`} className="font-bold uppercase tracking-widest text-sm hover:underline underline-offset-4 line-clamp-1">{item.name}</Link>
                       <p className="font-bold">₹{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
-                    <p className="text-muted-foreground uppercase text-xs tracking-widest mb-2">Size: {item.size}</p>
+                    <p className="text-muted-foreground uppercase text-xs tracking-widest mb-1">Size: {item.size}</p>
+                    <p className="text-muted-foreground uppercase text-xs tracking-widest mb-2">Color: {item.color || 'Default'}</p>
                     <p className="text-muted-foreground text-xs">₹{item.price.toFixed(2)} each</p>
                   </div>
                   
@@ -351,6 +383,21 @@ export default function CheckoutPage() {
                     <input type="text" placeholder="Apartment (optional)" value={newAddress.apt} onChange={e => setNewAddress({...newAddress, apt: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground col-span-2" />
                     <input required={!selectedAddress} type="text" placeholder="City" value={newAddress.city} onChange={e => setNewAddress({...newAddress, city: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
                     <input required={!selectedAddress} type="text" placeholder="Postal Code" value={newAddress.zipCode} onChange={e => setNewAddress({...newAddress, zipCode: e.target.value})} className="w-full p-3 border border-border focus:outline-none focus:border-foreground" />
+                    <select 
+                      value={newAddress.country} 
+                      onChange={e => setNewAddress({...newAddress, country: e.target.value})} 
+                      className="w-full p-3 border border-border focus:outline-none focus:border-foreground uppercase text-xs tracking-widest bg-background col-span-2"
+                    >
+                      <option value="India">India</option>
+                      <option value="United States">United States (USA)</option>
+                      <option value="United Kingdom">United Kingdom (UK)</option>
+                      <option value="Canada">Canada</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Germany">Germany</option>
+                      <option value="France">France</option>
+                      <option value="UAE">United Arab Emirates (UAE)</option>
+                      <option value="Other">Other / International</option>
+                    </select>
                     
                     {addresses.length > 0 && isChangingAddress && (
                       <div className="col-span-2 flex gap-4 mt-2">
@@ -427,6 +474,62 @@ export default function CheckoutPage() {
                 {couponSuccess && (
                   <p className="text-green-600 text-[11px] font-bold uppercase tracking-widest mt-2">{couponSuccess}</p>
                 )}
+
+                {/* Available Public Coupons List (Myntra/Nike/Shopify Style UX) */}
+                {publicCoupons.length > 0 && !appliedCoupon && (
+                  <div className="mt-4 pt-4 border-t border-border/60">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Available Offers & Coupons
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                      {publicCoupons.map((coupon) => {
+                        const isEligible = subtotal >= coupon.minSpend;
+                        return (
+                          <div 
+                            key={coupon.id} 
+                            className={`p-3 border rounded-sm transition-all flex items-center justify-between gap-3 ${
+                              isEligible ? 'bg-white border-border hover:border-black' : 'bg-muted/30 border-dashed border-border/70 opacity-70'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-mono text-xs font-bold uppercase tracking-widest px-2 py-0.5 bg-muted border border-border text-black rounded-xs">
+                                  {coupon.code}
+                                </span>
+                                <span className="text-[11px] font-bold text-green-600 uppercase tracking-widest">
+                                  {coupon.discountType === 'Percentage' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-widest truncate">
+                                {coupon.minSpend > 0 ? `On orders above ₹${coupon.minSpend.toLocaleString('en-IN')}` : 'No minimum spend required'}
+                              </p>
+                            </div>
+                            
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCouponInput(coupon.code);
+                                handleApplyCoupon(null, coupon.code);
+                              }}
+                              disabled={couponLoading || !isEligible}
+                              className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                                isEligible 
+                                  ? 'bg-black text-white hover:bg-black/80' 
+                                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+                              }`}
+                            >
+                              {couponLoading && couponInput === coupon.code ? 'Applying...' : (isEligible ? 'Apply' : `Add ₹${(coupon.minSpend - subtotal).toFixed(0)} more`)}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 text-sm mb-4">
@@ -434,15 +537,6 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="font-bold">₹{subtotal.toFixed(2)}</span>
                 </div>
-
-                {appliedCoupon && (
-                  <div className="flex justify-between text-green-600 font-bold">
-                    <span className="uppercase tracking-widest flex items-center gap-1">
-                      Discount ({appliedCoupon.code})
-                    </span>
-                    <span>-₹{discountAmount.toFixed(2)}</span>
-                  </div>
-                )}
 
                 <div className="flex justify-between relative items-center">
                   <div className="flex items-center gap-2" ref={gstInfoRef}>
@@ -455,12 +549,19 @@ export default function CheckoutPage() {
                       <Info className="w-3.5 h-3.5" />
                     </button>
                     {showGstInfo && (
-                      <div className="absolute top-6 left-0 bg-white border border-black p-3 text-[10px] uppercase font-bold tracking-widest z-10 shadow-lg w-48 text-black">
-                        <p className="mb-2 border-b border-border pb-1">GST Rates</p>
-                        <p className="text-muted-foreground leading-relaxed">
-                          Item {'>'} ₹{taxSettings.indianThreshold}: {taxSettings.indianHighRate}%<br/>
-                          Item {'<='} ₹{taxSettings.indianThreshold}: {taxSettings.indianLowRate}%
-                        </p>
+                      <div className="absolute top-6 left-0 bg-white border border-black p-3 text-[10px] uppercase font-bold tracking-widest z-10 shadow-lg w-52 text-black">
+                        <p className="mb-2 border-b border-border pb-1">Tax Rules ({currentShippingCountry})</p>
+                        {isIndianDestination ? (
+                          <p className="text-muted-foreground leading-relaxed">
+                            Item {'>'} ₹{taxSettings.indianThreshold}: {taxSettings.indianHighRate}% GST<br/>
+                            Item {'<='} ₹{taxSettings.indianThreshold}: {taxSettings.indianLowRate}% GST
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground leading-relaxed">
+                            International Order ({currentShippingCountry}):<br/>
+                            Tax Rate: {taxSettings.nonIndianRate || 0}%
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -470,6 +571,15 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground uppercase tracking-widest">Shipping</span>
                   <span className="font-bold">{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
                 </div>
+
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-600 font-bold">
+                    <span className="uppercase tracking-widest flex items-center gap-1">
+                      Discount ({appliedCoupon.code})
+                    </span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
               <div className="flex justify-between border-t border-black pt-4">
                 <span className="font-bold uppercase tracking-widest text-lg">Total</span>

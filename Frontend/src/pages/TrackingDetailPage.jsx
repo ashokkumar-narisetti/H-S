@@ -77,6 +77,7 @@ export default function TrackingDetailPage() {
                 const isInProgress = !isDelivered && !isShipping;
                 
                 const validDate = order.createdAt || order.date || Date.now();
+                const deliveryDate = order.completedDate || order.updatedAt || order.deliveredAt || validDate;
 
                 return (
                   <>
@@ -103,7 +104,10 @@ export default function TrackingDetailPage() {
                         <div className={`w-8 h-8 rounded-full border-4 ${isDelivered ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${isDelivered ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
                           {isDelivered && <Check className="w-4 h-4 text-white" />}
                         </div>
-                        <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${!isDelivered && 'text-muted-foreground'}`}>Delivery</p>
+                        <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${!isDelivered && 'text-muted-foreground'}`}>Delivered</p>
+                        {isDelivered && (
+                          <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(deliveryDate).toLocaleDateString()}</p>
+                        )}
                       </div>
                     </div>
                   </>
@@ -130,7 +134,11 @@ export default function TrackingDetailPage() {
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <Link to={`/product/${item.productId}`} className="font-bold uppercase tracking-widest text-xs hover:underline underline-offset-4 line-clamp-2">{item.name}</Link>
-                    <p className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold">Size: {item.size} {item.color && <><span className="mx-2 text-border">•</span> Color: {item.color}</>} <span className="mx-2 text-border">•</span> Qty: {item.quantity}</p>
+                    <div className="text-muted-foreground uppercase tracking-widest text-[10px] mt-2 font-bold space-y-1">
+                      <p>Size: {item.size}</p>
+                      {item.color && <p>Color: {item.color}</p>}
+                      <p>Qty: {item.quantity}</p>
+                    </div>
                   </div>
                 </div>
               ))}

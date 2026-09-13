@@ -253,3 +253,47 @@ export const deleteCoupon = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to delete coupon' });
   }
 };
+
+// @desc    Get active public coupons for checkout display
+// @route   GET /api/coupons/public
+// @access  Public
+export const getPublicCoupons = async (req, res) => {
+  try {
+    await initCustomTables();
+
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        type: 'Public',
+        status: 'Active'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const activePublicCoupons = coupons
+      .filter(c => {
+        if (c.expiryDate) {
+          const expiry = new Date(c.expiryDate);
+          expiry.setHours(23, 59, 59, 999);
+          if (expiry < new Date()) return false;
+        }
+        if (c.usageLimit > 0 && c.usageCount >= c.usageLimit) return false;
+        return true;
+      })
+      .map(c => ({
+        id: c.id,
+        code: c.code,
+        discountType: c.discountType,
+        discountValue: Number(c.discountValue) || 0,
+        minSpend: Number(c.minSpend) || 0,
+        expiryDate: c.expiryDate
+      }));
+
+    return res.status(200).json({
+      success: true,
+      coupons: activePublicCoupons
+    });
+  } catch (error) {
+    console.error('Error fetching public coupons:', error);
+    return res.status(500).json({ success: false, coupons: [] });
+  }
+};

@@ -74,6 +74,7 @@ export default function CartDrawer() {
                         <div>
                           <Link to={`/product/${item.id}`} onClick={closeCart} className="font-bold text-sm uppercase leading-tight hover:underline underline-offset-4 line-clamp-1">{item.name}</Link>
                           <p className="text-muted-foreground text-sm mt-1">Size: {item.size}</p>
+                          <p className="text-muted-foreground text-sm">Color: {item.color || 'Default'}</p>
                         </div>
                         <button 
                           onClick={() => removeFromCart(item.id, item.size)}
