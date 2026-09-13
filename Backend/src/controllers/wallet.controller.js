@@ -67,7 +67,21 @@ export const getMfgWalletMetrics = async (req, res) => {
       where: whereClause,
       include: {
         items: {
-          include: { product: true }
+          select: {
+            id: true,
+            name: true,
+            size: true,
+            color: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                id: true,
+                price: true,
+                manufacturePrice: true
+              }
+            }
+          }
         }
       }
     });
@@ -131,7 +145,21 @@ export const getMfgWalletEarnings = async (req, res) => {
       where: whereClause,
       include: {
         items: {
-          include: { product: true }
+          select: {
+            id: true,
+            name: true,
+            size: true,
+            color: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                id: true,
+                price: true,
+                manufacturePrice: true
+              }
+            }
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -186,7 +214,19 @@ export const getAdminWalletMetrics = async (req, res) => {
     const orders = await prisma.order.findMany({
       include: {
         items: {
-          include: { product: true }
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                id: true,
+                price: true,
+                manufacturePrice: true
+              }
+            }
+          }
         }
       }
     });
@@ -245,7 +285,21 @@ export const getAdminWalletTransactions = async (req, res) => {
     const orders = await prisma.order.findMany({
       include: {
         items: {
-          include: { product: true }
+          select: {
+            id: true,
+            name: true,
+            size: true,
+            color: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                id: true,
+                price: true,
+                manufacturePrice: true
+              }
+            }
+          }
         },
         user: { select: { fullName: true, email: true } },
         manufacturer: { select: { companyName: true, fullName: true } }

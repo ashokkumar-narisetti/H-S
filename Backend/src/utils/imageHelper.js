@@ -20,13 +20,17 @@ export const uploadBase64ToSupabase = async (val) => {
   }
 
   try {
-    const matches = val.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      return val;
-    }
+    const commaIdx = val.indexOf(',');
+    if (commaIdx === -1) return val;
 
-    const extension = matches[1];
-    const base64Data = matches[2];
+    const header = val.substring(0, commaIdx);
+    const slashIdx = header.indexOf('/');
+    const semiIdx = header.indexOf(';');
+    const extension = (slashIdx !== -1 && semiIdx !== -1 && semiIdx > slashIdx)
+      ? header.substring(slashIdx + 1, semiIdx).replace('+xml', '')
+      : 'png';
+
+    const base64Data = val.substring(commaIdx + 1);
     const buffer = Buffer.from(base64Data, 'base64');
 
     const fileName = `${crypto.randomUUID()}.${extension}`;
@@ -40,7 +44,7 @@ export const uploadBase64ToSupabase = async (val) => {
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
+      console.error('Supabase upload error:', error.message || error);
       return val; // Fallback to storing base64 if upload fails
     }
 
@@ -50,13 +54,14 @@ export const uploadBase64ToSupabase = async (val) => {
 
     return publicUrlData.publicUrl;
   } catch (error) {
-    console.error('Error in uploadBase64ToSupabase:', error);
+    console.error('Error in uploadBase64ToSupabase:', error.message || error);
     return val;
   }
 };
 
 /**
  * Traverses product payload objects and uploads base64 Data URIs to Supabase.
+ * Processes arrays sequentially to prevent concurrent memory buffer spikes.
  */
 export const deepSanitizeBase64 = async (val) => {
   if (!val) return val;
@@ -75,7 +80,12 @@ export const deepSanitizeBase64 = async (val) => {
   }
 
   if (Array.isArray(val)) {
-    return await Promise.all(val.map(item => deepSanitizeBase64(item)));
+    // Process items sequentially to avoid memory spikes from concurrent image buffers
+    const results = [];
+    for (const item of val) {
+      results.push(await deepSanitizeBase64(item));
+    }
+    return results;
   }
 
   if (typeof val === 'object' && val !== null) {

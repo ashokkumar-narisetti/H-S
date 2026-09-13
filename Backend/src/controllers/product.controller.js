@@ -54,8 +54,28 @@ export const getProducts = async (req, res) => {
     const products = await prisma.product.findMany({
       where: filter,
       orderBy: { createdAt: 'desc' },
-      include: {
-        drop: { select: { title: true, dropName: true, status: true } }
+      select: {
+        id: true,
+        name: true,
+        manufactureName: true,
+        description: true,
+        price: true,
+        userPrice: true,
+        images: true,
+        coverPhoto: true,
+        category: true,
+        gender: true,
+        fit: true,
+        isNew: true,
+        isBestSeller: true,
+        stock: true,
+        inStock: true,
+        sizes: true,
+        colors: true,
+        dropId: true,
+        drop: { select: { title: true, dropName: true, status: true } },
+        createdAt: true,
+        updatedAt: true
       }
     });
 

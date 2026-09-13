@@ -18,30 +18,92 @@ export const getDashboardStats = async (req, res) => {
   try {
     const period = req.query.period || '7d';
 
-    // 1. Fetch Orders with Items, User, and Product info
+    // 1. Fetch Orders with strictly needed fields (exclude heavy images, specs, priceBreakdowns)
     const orders = await prisma.order.findMany({
-      include: {
-        items: { include: { product: true } },
-        user: { select: { id: true, fullName: true, email: true } }
+      select: {
+        id: true,
+        totalPrice: true,
+        createdAt: true,
+        updatedAt: true,
+        status: true,
+        mfgPayment: true,
+        paymentStatus: true,
+        transactionId: true,
+        shipperName: true,
+        trackingNumber: true,
+        trackingLink: true,
+        priceAdjustmentStatus: true,
+        priceAdjustmentAmount: true,
+        priceAdjustmentReason: true,
+        cancelRequested: true,
+        cancelReason: true,
+        user: { select: { id: true, fullName: true, email: true } },
+        items: {
+          select: {
+            productId: true,
+            name: true,
+            price: true,
+            quantity: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                manufacturePrice: true,
+                category: true,
+                coverPhoto: true
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    // 2. Fetch Users
+    // 2. Fetch Users (minimal fields only)
     const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        createdAt: true,
+        status: true
+      },
       orderBy: { createdAt: 'desc' },
       take: 50
     });
     const totalUsersCount = await prisma.user.count();
 
-    // 3. Fetch Drops
+    // 3. Fetch Drops (exclude full nested product specs and image trees)
     const drops = await prisma.drop.findMany({
-      include: { products: true },
+      select: {
+        id: true,
+        dropName: true,
+        title: true,
+        status: true,
+        isActive: true,
+        releaseDate: true,
+        createdAt: true,
+        products: {
+          select: {
+            id: true,
+            coverPhoto: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
 
-    // 4. Fetch Products
+    // 4. Fetch Products (lean projection: stock, name, coverPhoto, category, updatedAt)
     const products = await prisma.product.findMany({
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        coverPhoto: true,
+        category: true,
+        updatedAt: true
+      },
       orderBy: { stock: 'asc' }
     });
 
