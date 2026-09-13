@@ -31,14 +31,10 @@ export default function Footer() {
   const shopLinks = [
     { name: 'New Arrivals', path: '/category/new-arrivals' },
     { name: 'Best Sellers', path: '/category/best-sellers' },
-    { name: 'Hoodies & Sweats', path: '/category/hoodies' },
-    { name: 'T-Shirts', path: '/category/tshirts' },
   ];
 
   const careLinks = [
     { name: 'Help Center', path: '/help' },
-    { name: 'Shipping Info', path: '/help' },
-    { name: 'Returns & Exchanges', path: '/help' },
     { name: 'Terms & Conditions', path: '/terms' },
   ];
 
