@@ -189,6 +189,41 @@ export default function CheckoutPage() {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+
+  const handleSaveAddress = async () => {
+    if (!newAddress.street || !newAddress.city || !newAddress.zipCode) {
+      alert('Please fill out street, city, and postal code.');
+      return;
+    }
+    setIsSavingAddress(true);
+    try {
+      const addressData = {
+        street: `${newAddress.street}${newAddress.apt ? ` ${newAddress.apt}` : ''}`,
+        city: newAddress.city,
+        state: '', 
+        zipCode: newAddress.zipCode,
+        country: newAddress.country || 'India',
+        isDefault: false
+      };
+      
+      const res = await axiosInstance.post('/addresses', addressData);
+      const savedAddr = res.data.data || res.data.address || res.data;
+      
+      setAddresses([...addresses, savedAddr]);
+      setSelectedAddress(savedAddr);
+      setIsChangingAddress(false);
+      
+      setNewAddress({
+        firstName: '', lastName: '', street: '', apt: '', city: '', zipCode: '', country: 'India'
+      });
+    } catch (error) {
+      console.error('Error saving address:', error);
+      alert('Failed to save address.');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -399,9 +434,25 @@ export default function CheckoutPage() {
                       <option value="Other">Other / International</option>
                     </select>
                     
-                    {addresses.length > 0 && isChangingAddress && (
+                    {isChangingAddress && (
                       <div className="col-span-2 flex gap-4 mt-2">
-                        <button type="button" onClick={() => setIsChangingAddress(false)} className="text-xs font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted w-full">Cancel</button>
+                        <button 
+                          type="button" 
+                          onClick={handleSaveAddress}
+                          disabled={isSavingAddress}
+                          className="text-xs font-bold uppercase tracking-widest bg-black text-white px-4 py-2 hover:bg-black/90 transition-colors flex-1"
+                        >
+                          {isSavingAddress ? 'Saving...' : 'Save Address'}
+                        </button>
+                        {addresses.length > 0 && (
+                          <button 
+                            type="button" 
+                            onClick={() => setIsChangingAddress(false)} 
+                            className="text-xs font-bold uppercase tracking-widest border border-border px-4 py-2 hover:bg-muted flex-1"
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

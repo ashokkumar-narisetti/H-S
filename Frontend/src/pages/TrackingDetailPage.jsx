@@ -76,7 +76,7 @@ export default function TrackingDetailPage() {
                 const isShipping = status === 'SHIPPING' || status === 'SHIPPED';
                 const isInProgress = !isDelivered && !isShipping;
                 
-                const validDate = order.createdAt || order.date || Date.now();
+                const validDate = order.orderedDate || order.createdAt || order.date || Date.now();
                 const deliveryDate = order.completedDate || order.updatedAt || order.deliveredAt || validDate;
 
                 return (
