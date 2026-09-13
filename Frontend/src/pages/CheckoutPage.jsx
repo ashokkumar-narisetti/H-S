@@ -281,11 +281,27 @@ export default function CheckoutPage() {
 
       const res = await axiosInstance.post('/orders/checkout', orderData);
       
+      const newOrderId = res.data?.id || res.data?.data?.id || res.data?.order?.id;
+
+      // Broadcast order creation immediately to Admin Dashboard and Manufacturer portals
+      try {
+        const channel = new BroadcastChannel('hs_orders_sync_channel');
+        channel.postMessage({ type: 'ORDER_CREATED', orderId: newOrderId });
+        channel.close();
+      } catch (e) {
+        // Fallback if BroadcastChannel unavailable
+      }
+      try {
+        localStorage.setItem('hs_orders_sync_event', JSON.stringify({ type: 'ORDER_CREATED', orderId: newOrderId, timestamp: Date.now() }));
+      } catch (e) {
+        // LocalStorage fallback
+      }
+
       clearCart();
       setIsProcessing(false);
       
       // Show success animation instead of immediate redirect
-      setCreatedOrderId(res.data.id);
+      setCreatedOrderId(newOrderId || res.data.id);
       setShowSuccess(true);
       
       // Auto redirect after 3 seconds

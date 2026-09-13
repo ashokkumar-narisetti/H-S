@@ -304,10 +304,14 @@ export const getDashboardStats = async (req, res) => {
         ? (order.transactionId ? 'Online' : 'Online')
         : (order.paymentStatus || 'Pending');
 
+      const productSummary = (Array.isArray(order.items) && order.items.length > 1)
+        ? order.items.map(i => `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name || i.product?.name || 'Apparel Item'}`).join(', ')
+        : (firstItem?.name || firstItem?.product?.name || 'Apparel Item');
+
       return {
         id: order.id,
         customer: order.user?.fullName || (order.user?.email ? order.user.email.split('@')[0] : 'Customer'),
-        product: firstItem?.name || firstItem?.product?.name || 'Apparel Item',
+        product: productSummary,
         amount: Number(order.totalPrice) || 0,
         payment: paymentDisplay,
         status: statusMap,
@@ -318,7 +322,10 @@ export const getDashboardStats = async (req, res) => {
         priceAdjustmentStatus: order.priceAdjustmentStatus || 'None',
         priceAdjustmentAmount: Number(order.priceAdjustmentAmount) || 0,
         priceAdjustmentReason: order.priceAdjustmentReason || '',
-        cancelRequested: order.cancelRequested || false
+        cancelRequested: order.cancelRequested || false,
+        couponCode: order.couponCode || null,
+        couponDiscount: Number(order.couponDiscount) || 0,
+        couponApplied: order.couponApplied || Boolean(order.couponCode || (order.couponDiscount && order.couponDiscount > 0))
       };
     });
 

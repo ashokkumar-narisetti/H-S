@@ -56,6 +56,15 @@ export default function TrackOrderPage() {
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>
                   <p className="font-bold">₹{(order.totalPrice || order.amountPaid || 0).toFixed(2)}</p>
                 </div>
+                {(order.couponApplied || order.couponCode) && (
+                  <div>
+                    <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Coupon Applied</p>
+                    <p className="font-bold text-emerald-600 flex items-center gap-1">
+                      <span>{order.couponCode || 'Yes'}</span>
+                      {order.couponDiscount > 0 && <span className="text-[11px]">(-₹{Number(order.couponDiscount).toFixed(2)})</span>}
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-col items-start">
                   <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
                       order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :

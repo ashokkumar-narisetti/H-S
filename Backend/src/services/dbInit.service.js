@@ -77,6 +77,17 @@ export const initCustomTables = async () => {
       ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;
     `);
 
+    // 6. Ensure Order coupon columns exist in PostgreSQL
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "couponCode" TEXT;
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "couponDiscount" DOUBLE PRECISION DEFAULT 0;
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "couponApplied" BOOLEAN DEFAULT false;
+    `);
+
     // Seed default settings if empty
     const taxSetting = await prisma.$queryRawUnsafe(`SELECT * FROM "Setting" WHERE "key" = 'tax'`);
     if (taxSetting.length === 0) {

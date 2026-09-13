@@ -168,10 +168,13 @@ model Order {
   items          OrderItem[]
 
   // Financials
-  taxPrice      Float @default(0)
-  shippingPrice Float @default(0)
-  totalPrice    Float
-  mfgPayment    Float @default(0)
+  taxPrice       Float   @default(0)
+  shippingPrice  Float   @default(0)
+  totalPrice     Float
+  mfgPayment     Float   @default(0)
+  couponCode     String?
+  couponDiscount Float   @default(0)
+  couponApplied  Boolean @default(false)
 
   // Logistics
   shippingAddress String

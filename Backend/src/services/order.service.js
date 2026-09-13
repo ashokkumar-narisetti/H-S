@@ -433,15 +433,143 @@ export const formatOrderForUi = (order) => {
   const shipCost = rawShipCost !== null ? rawShipCost : 0;
   const otherCost = rawOtherCost !== null ? rawOtherCost : 0;
 
+  // Authoritative coupon resolution with mathematical fallback
+  let resolvedCouponCode = order.couponCode || null;
+  let resolvedCouponDiscount = typeof order.couponDiscount === 'number' ? order.couponDiscount : 0;
+  let resolvedCouponApplied = Boolean(order.couponApplied || resolvedCouponCode || (resolvedCouponDiscount > 0));
+
+  if (!resolvedCouponApplied || resolvedCouponDiscount === 0) {
+    const rawItemsSum = Array.isArray(order.items)
+      ? order.items.reduce((sum, it) => sum + ((Number(it.price) || 0) * (Number(it.quantity) || 1)), 0)
+      : 0;
+    const tax = Number(order.taxPrice) || 0;
+    const ship = Number(order.shippingPrice) || 0;
+    const expectedGross = rawItemsSum + tax + ship;
+    const netTotal = Number(order.totalPrice) || 0;
+    const impliedDiscount = expectedGross - netTotal;
+
+    if (rawItemsSum > 0 && impliedDiscount >= 1) {
+      resolvedCouponDiscount = Number(impliedDiscount.toFixed(2));
+      resolvedCouponApplied = true;
+      if (!resolvedCouponCode) {
+        resolvedCouponCode = 'Applied';
+      }
+    }
+  }
+
+  // Format all individual line items with full manufacturing details
+  const rawOrderItems = Array.isArray(order.items) && order.items.length > 0
+    ? order.items
+    : (Array.isArray(order.orderItems) && order.orderItems.length > 0 ? order.orderItems : (firstItem.name ? [firstItem] : []));
+
+  const formattedItems = rawOrderItems.map((it, idx) => {
+    const itProduct = it.product || {};
+    const itColorAssets = resolveColorAssets(itProduct, it.color);
+    let itFront = itColorAssets.frontImg || itProduct.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80';
+    let itBack = itColorAssets.backImg || itProduct.images?.[1] || itFront;
+    const itMatched = itColorAssets.matchedColor;
+
+    const itBaseCost = (itMatched && typeof itMatched.baseCost === 'number')
+      ? itMatched.baseCost
+      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.baseCost === 'number')
+        ? itProduct.priceBreakdown.baseCost
+        : ((typeof itProduct.manufacturePrice === 'number' && itProduct.manufacturePrice > 0) ? itProduct.manufacturePrice : Math.round((it.price || itProduct.price || 0) * 0.6));
+
+    const itPrintCost = (itMatched && typeof itMatched.printingCost === 'number')
+      ? itMatched.printingCost
+      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.printingCost === 'number')
+        ? itProduct.priceBreakdown.printingCost
+        : 0;
+
+    const itShipCost = (itMatched && typeof itMatched.shippingCost === 'number')
+      ? itMatched.shippingCost
+      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.shippingCost === 'number')
+        ? itProduct.priceBreakdown.shippingCost
+        : 0;
+
+    const itOtherCost = (itMatched && typeof itMatched.additionalCost === 'number')
+      ? itMatched.additionalCost
+      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.additionalCost === 'number')
+        ? itProduct.priceBreakdown.additionalCost
+        : 0;
+
+    return {
+      id: it.id || `item-${idx}`,
+      productId: it.productId || itProduct.id || null,
+      name: it.name || itProduct.name || 'Athletic Product',
+      mfgItemName: itProduct.manufactureName || it.name || itProduct.name || 'MFG Athletic Product',
+      size: it.size || 'L',
+      color: it.color || 'Standard',
+      quantity: it.quantity || 1,
+      price: typeof it.price === 'number' ? it.price : (Number(itProduct.price) || 0),
+      productDetails: {
+        mfgProductName: itProduct.manufactureName || itProduct.name || it.name || 'MFG Athletic Product',
+        frontViewUrl: itFront,
+        backViewUrl: itBack,
+        neckLogoUrl: itProduct.images?.[2] || '',
+        designFile: itColorAssets.designFile || null,
+        printType: itColorAssets.printType,
+        printPosition: itColorAssets.printPosition,
+        printSpecs: itColorAssets.printSpecs,
+        printPlacements: itColorAssets.printPlacements || [],
+        colorCode: itColorAssets.colorCode,
+        colorName: it.color || 'Standard',
+        mfgBasePrice: itBaseCost,
+        baseCost: itBaseCost,
+        printingCost: itPrintCost,
+        shippingCost: itShipCost,
+        otherCost: itOtherCost,
+        costBreakdown: {
+          baseCost: itBaseCost,
+          printingCost: itPrintCost,
+          shippingCost: itShipCost,
+          otherCost: itOtherCost,
+          total: Number((itBaseCost + itPrintCost + itShipCost + itOtherCost).toFixed(2))
+        },
+        printingDetails: {
+          method: itColorAssets.printType ? `${itColorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
+          printType: itColorAssets.printType,
+          printPosition: itColorAssets.printPosition,
+          designFile: itColorAssets.designFile || null,
+          frontPrintSpec: itColorAssets.printSpecs,
+          backPrintSpec: (itColorAssets.printPlacements && itColorAssets.printPlacements.length > 1)
+            ? itColorAssets.printPlacements[1].specs
+            : (itProduct.manufactureSpec?.backPrintSpec || null),
+          neckLogoSpec: `Inner collar neck label 2.5 in x 1.0 in (${itColorAssets.isLight ? 'Black Font' : 'White Font'})`,
+          neckLogoFile: itColorAssets.neckLogoFileName,
+          fabricGSM: itProduct.manufactureSpec?.fabricGSM || '240 GSM 100% Ring-Spun Cotton',
+          pantoneCodes: itColorAssets.colorCode ? `${itColorAssets.colorCode} / ${it.color || 'Standard'}` : '#1A1A1A / Standard'
+        }
+      },
+      product: itProduct
+    };
+  });
+
+  const combinedItemName = formattedItems.length > 0
+    ? formattedItems.map(i => `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name}`).join(', ')
+    : (firstItem.name || 'Athletic Product');
+
+  const combinedMfgItemName = formattedItems.length > 0
+    ? formattedItems.map(i => i.mfgItemName).join(', ')
+    : (product.manufactureName || firstItem.name || 'MFG Athletic Product');
+
+  const combinedSize = formattedItems.length > 0
+    ? formattedItems.map(i => i.size).join(', ')
+    : (firstItem.size || 'L');
+
+  const combinedColor = formattedItems.length > 0
+    ? formattedItems.map(i => i.color).join(', ')
+    : (firstItem.color || 'Standard');
+
   return {
     id: order.id,
     orderedDate: order.createdAt
       ? new Date(order.createdAt).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0],
-    itemName: firstItem.name || 'Athletic Product',
-    mfgItemName: product.manufactureName || firstItem.name || 'MFG Athletic Product',
-    size: firstItem.size || 'L',
-    color: firstItem.color || 'Standard',
+    itemName: combinedItemName,
+    mfgItemName: combinedMfgItemName,
+    size: combinedSize,
+    color: combinedColor,
     orderedBy: user.id || order.userId || '',
     fullName: recipientName || user.fullName || user.email || 'Customer',
     phone: recipientPhone || user.mobile || 'N/A',
@@ -465,7 +593,11 @@ export const formatOrderForUi = (order) => {
     mfgPaymentStatus: order.mfgPaymentStatus || 'Unpaid',
     mfgPaidDate: order.mfgPaidDate || null,
     completedDate: order.completedDate || null,
-    productDetails: {
+    couponCode: resolvedCouponCode,
+    couponDiscount: resolvedCouponDiscount,
+    couponApplied: resolvedCouponApplied,
+    items: formattedItems,
+    productDetails: (formattedItems[0]?.productDetails) || {
       mfgProductName: product.manufactureName || product.name || firstItem.name || 'MFG Athletic Item',
       frontViewUrl: frontImg,
       backViewUrl: backImg,
@@ -504,7 +636,7 @@ export const formatOrderForUi = (order) => {
         pantoneCodes: colorAssets.colorCode ? `${colorAssets.colorCode} / ${firstItem.color || 'Standard'}` : '#1A1A1A / Standard'
       }
     },
-    items: order.items || order.orderItems || []
+    rawItems: order.items || order.orderItems || []
   };
 };
 
@@ -684,6 +816,9 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
         status: dbStatus,
         paymentStatus: 'SUCCESSFUL',
         mfgPaymentStatus: 'Unpaid',
+        couponCode: orderData.couponCode || null,
+        couponDiscount: Number(orderData.couponDiscount) || 0,
+        couponApplied: Boolean(orderData.couponCode || (orderData.couponDiscount && Number(orderData.couponDiscount) > 0)),
         items: {
           create: [
             {
@@ -722,6 +857,19 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
         }
       }
     });
+
+    if (orderData.couponCode || orderData.couponDiscount) {
+      await tx.$executeRawUnsafe(
+        `UPDATE "Order" SET "couponCode" = $1, "couponDiscount" = $2, "couponApplied" = $3 WHERE "id" = $4`,
+        orderData.couponCode || null,
+        Number(orderData.couponDiscount) || 0,
+        Boolean(orderData.couponCode || (orderData.couponDiscount && Number(orderData.couponDiscount) > 0)),
+        customOrderId
+      );
+      order.couponCode = orderData.couponCode || null;
+      order.couponDiscount = Number(orderData.couponDiscount) || 0;
+      order.couponApplied = Boolean(orderData.couponCode || (orderData.couponDiscount && Number(orderData.couponDiscount) > 0));
+    }
 
     return formatOrderForUi(order);
   });
@@ -804,6 +952,8 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
 
     // Authoritative Coupon Validation
     let couponDiscount = 0;
+    let validCouponCode = null;
+    let isCouponApplied = false;
     if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
       const cleanCode = couponCode.trim().toUpperCase();
       const coupon = await tx.coupon.findUnique({ where: { code: cleanCode } });
@@ -818,6 +968,8 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
           } else {
             couponDiscount = Math.min(itemsPrice, coupon.discountValue);
           }
+          validCouponCode = coupon.code;
+          isCouponApplied = true;
           await tx.coupon.update({
             where: { id: coupon.id },
             data: { usageCount: { increment: 1 } }
@@ -875,6 +1027,9 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
         mfgPayment,
         paymentStatus,
         status: 'IN_PROGRESS',
+        couponCode: validCouponCode,
+        couponDiscount: Number(couponDiscount.toFixed(2)),
+        couponApplied: isCouponApplied,
         items: {
           create: itemsToCreate
         }
@@ -902,6 +1057,19 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
         }
       }
     });
+
+    if (isCouponApplied && validCouponCode) {
+      await tx.$executeRawUnsafe(
+        `UPDATE "Order" SET "couponCode" = $1, "couponDiscount" = $2, "couponApplied" = $3 WHERE "id" = $4`,
+        validCouponCode,
+        Number(couponDiscount.toFixed(2)),
+        true,
+        customOrderId
+      );
+      order.couponCode = validCouponCode;
+      order.couponDiscount = Number(couponDiscount.toFixed(2));
+      order.couponApplied = true;
+    }
 
     return formatOrderForUi(order);
   }, { maxWait: 10000, timeout: 20000 });

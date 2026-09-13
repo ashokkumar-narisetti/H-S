@@ -147,9 +147,15 @@ export const getMfgWalletEarnings = async (req, res) => {
         id: `REC-${100 + idx + 1}`,
         orderId: order.id,
         orderedDate: order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        itemName: firstItem.name || 'Athletic Wear',
-        size: firstItem.size || 'L',
-        color: firstItem.color || 'Default',
+        itemName: (Array.isArray(order.items) && order.items.length > 1)
+          ? order.items.map(i => `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name || 'Athletic Wear'}`).join(', ')
+          : (firstItem.name || 'Athletic Wear'),
+        size: (Array.isArray(order.items) && order.items.length > 1)
+          ? order.items.map(i => i.size).filter(Boolean).join(', ')
+          : (firstItem.size || 'L'),
+        color: (Array.isArray(order.items) && order.items.length > 1)
+          ? order.items.map(i => i.color).filter(Boolean).join(', ')
+          : (firstItem.color || 'Default'),
         manufacturerPayment: payment,
         isAdjusted,
         adjustmentStatus: adjStatus,

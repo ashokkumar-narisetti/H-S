@@ -158,6 +158,29 @@ export default function TrackingDetailPage() {
             </div>
           </div>
 
+          {/* Payment & Coupon Summary Card */}
+          <div className="bg-white border border-border shadow-sm p-6">
+            <h3 className="font-heading text-sm font-bold uppercase tracking-widest mb-6 border-b border-border pb-4">
+              Payment Summary
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Payment Status</span>
+                <span className="font-bold text-black uppercase tracking-wider text-xs">{order.paymentStatus || 'PENDING'}</span>
+              </div>
+              {(order.couponApplied || order.couponCode) && (
+                <div className="flex justify-between items-center text-emerald-600 font-bold">
+                  <span>Coupon ({order.couponCode || 'Applied'})</span>
+                  <span>-₹{(Number(order.couponDiscount) || 0).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-border pt-3 font-bold text-base">
+                <span>Total Amount</span>
+                <span>₹{(Number(order.totalPrice || order.amountPaid) || 0).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
