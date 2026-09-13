@@ -1,6 +1,11 @@
 import { prisma } from '../lib/prisma.js';
 import { getTaxSettingsHelper } from '../controllers/settings.controller.js';
 
+// Returns YYYY-MM-DD in Indian Standard Time (Asia/Kolkata)
+const getIstDateString = (date = new Date()) => {
+  return new Date(date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+};
+
 export const mapDbStatusToUi = (dbStatus) => {
   switch (dbStatus) {
     case 'IN_PROGRESS':
@@ -576,9 +581,10 @@ export const formatOrderForUi = (order) => {
 
   return {
     id: order.id,
+    createdAt: order.createdAt || null,
     orderedDate: order.createdAt
-      ? new Date(order.createdAt).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0],
+      ? getIstDateString(order.createdAt)
+      : getIstDateString(),
     itemName: combinedItemName,
     mfgItemName: combinedMfgItemName,
     size: combinedSize,
@@ -814,7 +820,7 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
       ? shippingAddress
       : JSON.stringify(shippingAddress || {});
 
-    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const dateStr = getIstDateString().slice(2).replace(/-/g, '');
     const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
     const customOrderId = `HS-${dateStr}-${randomHex}`;
 
@@ -1027,7 +1033,7 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
     const mfgPayment = totalMfgPayment;
     const paymentStatus = paymentMethod === 'COD' ? 'PENDING' : 'SUCCESSFUL';
 
-    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const dateStr = getIstDateString().slice(2).replace(/-/g, '');
     const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
     const customOrderId = `HS-${dateStr}-${randomHex}`;
 
@@ -1187,7 +1193,7 @@ export const completeOrder = async (id, completedDate) => {
     where: { id },
     data: {
       status: 'DELIVERED',
-      completedDate: completedDate || new Date().toISOString().split('T')[0]
+      completedDate: completedDate || getIstDateString()
     },
     include: {
       items: { include: { product: true } },
@@ -1352,7 +1358,7 @@ export const updateMfgPaymentStatus = async (id, mfgPaymentStatus, mfgPaidDate) 
     data: {
       mfgPaymentStatus: mfgPaymentStatus || 'Paid',
       mfgPaidDate: mfgPaymentStatus === 'Paid'
-        ? (mfgPaidDate || new Date().toISOString().split('T')[0])
+        ? (mfgPaidDate || getIstDateString())
         : null
     },
     include: {

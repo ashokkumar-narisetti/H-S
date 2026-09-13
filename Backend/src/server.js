@@ -20,6 +20,7 @@ import { initCustomTables } from './services/dbInit.service.js';
 import { prisma } from './lib/prisma.js';
 
 dotenv.config();
+process.env.TZ = process.env.TZ || 'Asia/Kolkata';
 
 const app = express();
 const PORT = process.env.PORT || 5000;

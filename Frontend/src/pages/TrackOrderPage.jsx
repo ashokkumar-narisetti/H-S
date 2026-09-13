@@ -12,6 +12,15 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { axiosInstance } from '../lib/axios';
 
+const formatOrderDate = (dateVal) => {
+  if (!dateVal) return new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+    const parts = dateVal.split('-');
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(dateVal).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+};
+
 export default function TrackOrderPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +59,7 @@ export default function TrackOrderPage() {
               <div className="flex flex-wrap gap-8 text-sm items-center">
                 <div>
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Order Placed</p>
-                  <p className="font-bold">{new Date(order.createdAt || order.orderedDate || Date.now()).toLocaleDateString()}</p>
+                  <p className="font-bold">{formatOrderDate(order.createdAt || order.orderedDate)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold mb-1">Total</p>

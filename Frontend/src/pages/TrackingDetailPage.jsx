@@ -10,6 +10,15 @@ import { ArrowLeft, Check, Package, MapPin, ExternalLink, Clock } from 'lucide-r
 import { useState, useEffect } from 'react';
 import { axiosInstance } from '../lib/axios';
 
+const formatOrderDate = (dateVal) => {
+  if (!dateVal) return new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+  if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+    const parts = dateVal.split('-');
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return new Date(dateVal).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+};
+
 export default function TrackingDetailPage() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
@@ -76,7 +85,7 @@ export default function TrackingDetailPage() {
                 const isShipping = status === 'SHIPPING' || status === 'SHIPPED';
                 const isInProgress = !isDelivered && !isShipping;
                 
-                const validDate = order.orderedDate || order.createdAt || order.date || Date.now();
+                const validDate = order.createdAt || order.orderedDate || order.date;
                 const deliveryDate = order.completedDate || order.updatedAt || order.deliveredAt || validDate;
 
                 return (
@@ -91,7 +100,7 @@ export default function TrackingDetailPage() {
                           <Check className="w-4 h-4" />
                         </div>
                         <p className="mt-4 text-[10px] uppercase tracking-widest font-bold text-center">In Progress</p>
-                        <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(validDate).toLocaleDateString()}</p>
+                        <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{formatOrderDate(validDate)}</p>
                       </div>
                       <div className="flex flex-col items-center">
                         <div className={`w-8 h-8 rounded-full border-4 ${(isShipping || isDelivered) ? 'border-black bg-black' : 'border-border bg-white'} flex items-center justify-center ${(isShipping || isDelivered) ? 'shadow-[0_0_10px_rgba(0,0,0,0.2)]' : ''}`}>
@@ -106,7 +115,7 @@ export default function TrackingDetailPage() {
                         </div>
                         <p className={`mt-4 text-[10px] uppercase tracking-widest font-bold text-center ${!isDelivered && 'text-muted-foreground'}`}>Delivered</p>
                         {isDelivered && (
-                          <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{new Date(deliveryDate).toLocaleDateString()}</p>
+                          <p className="mt-1 text-[9px] uppercase tracking-widest text-muted-foreground font-bold text-center">{formatOrderDate(deliveryDate)}</p>
                         )}
                       </div>
                     </div>

@@ -174,7 +174,9 @@ export const getMfgWalletEarnings = async (req, res) => {
       return {
         id: `REC-${100 + idx + 1}`,
         orderId: order.id,
-        orderedDate: order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        orderedDate: order.createdAt
+          ? new Date(order.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+          : new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
         itemName: (Array.isArray(order.items) && order.items.length > 1)
           ? order.items.map(i => `${i.quantity > 1 ? `${i.quantity}x ` : ''}${i.name || 'Athletic Wear'}`).join(', ')
           : (firstItem.name || 'Athletic Wear'),
