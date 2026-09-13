@@ -89,7 +89,7 @@ export default function CheckoutPage() {
     fetchAddresses();
   }, []);
 
-  // Tax Settings State
+  // Tax & Shipping Settings State
   const [taxSettings, setTaxSettings] = useState({
     enableGst: true,
     indianThreshold: 2500,
@@ -98,12 +98,22 @@ export default function CheckoutPage() {
     nonIndianRate: 0
   });
 
+  const [shippingSettings, setShippingSettings] = useState({
+    blockStepKg: 5,
+    ratePerBlock: 5000,
+    domesticFlatRate: 0,
+    currency: 'INR (₹)'
+  });
+
   useEffect(() => {
     const fetchTaxSettings = async () => {
       try {
         const res = await axiosInstance.get('/settings/public');
         if (res.data?.data?.taxSettings) {
           setTaxSettings(res.data.data.taxSettings);
+        }
+        if (res.data?.data?.shippingSettings) {
+          setShippingSettings(res.data.data.shippingSettings);
         }
       } catch (error) {
         console.error('Error fetching tax settings:', error);
@@ -184,7 +194,18 @@ export default function CheckoutPage() {
     }
   }, 0);
   
-  const shipping = subtotal > 150 ? 0 : 10;
+  let shipping = 0;
+  if (isIndianDestination) {
+    shipping = Number(shippingSettings?.domesticFlatRate) || 0;
+  } else {
+    // International shipping logic based on admin settings
+    const totalWeightKg = cartItems.reduce((sum, item) => sum + (0.5 * item.quantity), 0);
+    const blockStepKg = Number(shippingSettings?.blockStepKg) || 5;
+    const ratePerBlock = Number(shippingSettings?.ratePerBlock) || 5000;
+    const blocks = Math.ceil(totalWeightKg / blockStepKg);
+    shipping = blocks * ratePerBlock;
+  }
+  
   const total = Math.max(0, subtotal - discountAmount + gst + shipping);
 
   const [showSuccess, setShowSuccess] = useState(false);
