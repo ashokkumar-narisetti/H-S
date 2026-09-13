@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ChevronDown } from 'lucide-react';
+import { Mail, ChevronDown, Check, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const InstagramIcon = ({ className }) => (
   <svg 
@@ -23,9 +24,19 @@ const InstagramIcon = ({ className }) => (
 
 export default function Footer() {
   const [openMobileSection, setOpenMobileSection] = useState(null);
+  const [email, setEmail] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
 
   const toggleSection = (section) => {
     setOpenMobileSection(openMobileSection === section ? null : section);
+  };
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setShowPopup(true);
+    toast.success('Thank You For Joining the H&S Exclusive Club, Stay Tuned for the Updates');
+    setEmail('');
   };
 
   const shopLinks = [
@@ -64,10 +75,12 @@ export default function Footer() {
             <p className="text-xs text-muted-foreground mb-4">
               Subscribe to our newsletter for exclusive drops and know what's Trending.
             </p>
-            <form className="flex border border-muted-foreground/30 focus-within:border-background transition-colors" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex border border-muted-foreground/30 focus-within:border-background transition-colors" onSubmit={handleSubscribe}>
               <input 
                 type="email" 
                 placeholder="EMAIL ADDRESS" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-transparent w-full p-3 text-xs focus:outline-none text-background placeholder:text-muted-foreground"
                 required
               />
@@ -171,10 +184,12 @@ export default function Footer() {
             <p className="text-sm text-muted-foreground mb-4">
               Subscribe to our newsletter for exclusive drops and know what's Trending
             </p>
-            <form className="flex border border-muted-foreground/30 focus-within:border-background transition-colors" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex border border-muted-foreground/30 focus-within:border-background transition-colors" onSubmit={handleSubscribe}>
               <input 
                 type="email" 
                 placeholder="EMAIL ADDRESS" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-transparent w-full p-3 text-sm focus:outline-none text-background placeholder:text-muted-foreground"
                 required
               />
@@ -194,6 +209,38 @@ export default function Footer() {
           <p>&copy; 2026 H&S COLLECTIVE. ALL RIGHTS RESERVED.</p>
         </div>
       </div>
+
+      {/* Subscription Success Modal Popup */}
+      {showPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white text-black border border-neutral-200 p-8 max-w-md w-full shadow-2xl relative text-center">
+            <button 
+              type="button"
+              onClick={() => setShowPopup(false)}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-black p-1 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-14 h-14 bg-black text-white rounded-full flex items-center justify-center mx-auto mb-5 shadow-md">
+              <Check className="w-7 h-7" />
+            </div>
+            <h3 className="font-heading text-xl font-bold uppercase tracking-tight mb-3">
+              H&S Exclusive Club
+            </h3>
+            <p className="text-xs sm:text-sm text-neutral-600 mb-6 font-medium leading-relaxed uppercase tracking-wider">
+              Thank You For Joining the H&S Exclusive Club, Stay Tuned for the Updates
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowPopup(false)}
+              className="w-full py-3.5 bg-black text-white font-bold text-xs uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
     </footer>
   );
 }

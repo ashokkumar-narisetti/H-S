@@ -1,45 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Filter, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { useCatalogStore } from '../store/useCatalogStore';
 
 export default function CategoryPage() {
   const { categoryName } = useParams();
   
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest');
-  const [selectedSizes, setSelectedSizes] = useState([]);
-  const [selectedFits, setSelectedFits] = useState([]);
 
   const { products, isLoading, fetchProducts } = useCatalogStore();
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-
-  // Extract unique sizes from all loaded products
-  const sizes = useMemo(() => {
-    const allSizes = new Set();
-    products.forEach(p => {
-      if (Array.isArray(p.sizes)) {
-        p.sizes.forEach(sizeObj => {
-          const sizeStr = typeof sizeObj === 'string' ? sizeObj : sizeObj?.size;
-          if (sizeStr) allSizes.add(sizeStr);
-        });
-      }
-    });
-    return Array.from(allSizes).sort();
-  }, [products]);
-
-  // Extract unique fits from all loaded products
-  const fits = useMemo(() => {
-    const allFits = new Set();
-    products.forEach(p => {
-      if (p.fit) allFits.add(p.fit);
-    });
-    return Array.from(allFits).sort();
-  }, [products]);
 
   // Filter and Sort Logic
   const filteredProducts = useMemo(() => {
@@ -54,21 +28,6 @@ export default function CategoryPage() {
       result = result.filter(p => p.isNew);
     } else if (categoryName === 'best-sellers') {
       result = result.filter(p => p.isBestSeller);
-    }
-
-    // Filter by Sizes
-    if (selectedSizes.length > 0) {
-      result = result.filter(p => 
-        Array.isArray(p.sizes) && p.sizes.some(sizeObj => {
-          const sizeStr = typeof sizeObj === 'string' ? sizeObj : sizeObj?.size;
-          return selectedSizes.includes(sizeStr);
-        })
-      );
-    }
-
-    // Filter by Fit
-    if (selectedFits.length > 0) {
-      result = result.filter(p => selectedFits.includes(p.fit));
     }
 
     // Sorting
@@ -87,19 +46,7 @@ export default function CategoryPage() {
     }
 
     return result;
-  }, [categoryName, sortOption, selectedSizes, selectedFits]);
-
-  const toggleSize = (size) => {
-    setSelectedSizes(prev => 
-      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
-    );
-  };
-
-  const toggleFit = (fit) => {
-    setSelectedFits(prev => 
-      prev.includes(fit) ? prev.filter(f => f !== fit) : [...prev, fit]
-    );
-  };
+  }, [categoryName, sortOption, products]);
 
   const categoryTitle = categoryName 
     ? decodeURIComponent(categoryName).replace('-', ' ') 
@@ -115,14 +62,6 @@ export default function CategoryPage() {
         </h1>
         
         <div className="flex items-center gap-6 text-sm">
-          <button 
-            className="flex items-center gap-2 font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors"
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <Filter className="w-4 h-4" />
-            Filters {selectedSizes.length + selectedFits.length > 0 && `(${selectedSizes.length + selectedFits.length})`}
-          </button>
-          
           <div className="relative group">
             <button className="flex items-center gap-2 font-bold uppercase tracking-widest hover:text-muted-foreground transition-colors">
               Sort By <ChevronDown className="w-4 h-4" />
@@ -136,83 +75,24 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-12">
-        {/* Sidebar Filters */}
-        {isFilterOpen && (
-          <aside className="w-full lg:w-64 flex-shrink-0">
-            <div className="space-y-8">
-              {/* Size Filter */}
-              <div>
-                <h3 className="font-heading font-bold uppercase mb-4 text-sm tracking-wider">Size</h3>
-                <div className="flex flex-wrap gap-2">
-                  {sizes.map(size => (
-                    <button
-                      key={size}
-                      onClick={() => toggleSize(size)}
-                      className={`w-10 h-10 border flex items-center justify-center text-xs font-bold uppercase transition-colors ${
-                        selectedSizes.includes(size) 
-                          ? 'bg-foreground text-background border-foreground' 
-                          : 'bg-background text-foreground border-border hover:border-foreground'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Fit Filter */}
-              <div>
-                <h3 className="font-heading font-bold uppercase mb-4 text-sm tracking-wider">Fit</h3>
-                <div className="space-y-2">
-                  {fits.map(fit => (
-                    <label key={fit} className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-4 h-4 border flex items-center justify-center transition-colors ${
-                        selectedFits.includes(fit) ? 'bg-foreground border-foreground' : 'border-muted-foreground group-hover:border-foreground'
-                      }`}>
-                        {selectedFits.includes(fit) && <div className="w-2 h-2 bg-background" />}
-                      </div>
-                      <span className="text-sm uppercase tracking-wide">{fit}</span>
-                      <input 
-                        type="checkbox" 
-                        className="hidden" 
-                        checked={selectedFits.includes(fit)}
-                        onChange={() => toggleFit(fit)}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => { setSelectedSizes([]); setSelectedFits([]); }}
-                className="w-full py-3 border border-border text-xs font-bold uppercase tracking-widest hover:bg-muted transition-colors mt-4"
-              >
-                Clear Filters
-              </button>
-            </div>
-          </aside>
+      {/* Product Grid */}
+      <div>
+        {isLoading ? (
+          <div className="text-center py-20">
+            <h2 className="font-heading text-2xl font-bold uppercase mb-4 text-muted-foreground">Loading Products...</h2>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <h2 className="font-heading text-2xl font-bold uppercase mb-4">No Products Found</h2>
+            <p className="text-muted-foreground uppercase text-sm tracking-widest">No products available in this category</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-12">
+            {filteredProducts.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
         )}
-
-        {/* Product Grid */}
-        <div className="flex-1">
-          {isLoading ? (
-            <div className="text-center py-20">
-              <h2 className="font-heading text-2xl font-bold uppercase mb-4 text-muted-foreground">Loading Products...</h2>
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-20">
-              <h2 className="font-heading text-2xl font-bold uppercase mb-4">No Products Found</h2>
-              <p className="text-muted-foreground uppercase text-sm tracking-widest">Try adjusting your filters</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-12">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
