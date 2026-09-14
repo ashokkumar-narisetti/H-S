@@ -124,6 +124,37 @@ export default function TrackingDetailPage() {
               })()}
             </div>
 
+            {/* Courier & Live Tracking Info */}
+            {((order.shipperName && order.shipperName !== 'None') || (order.trackingId && order.trackingId !== 'None')) && (
+              <div className="mt-8 pt-8 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-neutral-50 p-6 rounded-lg border">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Carrier / Courier</p>
+                  <p className="text-base font-bold text-black tracking-wide">
+                    {order.shipperName && order.shipperName !== 'None' ? order.shipperName : 'Standard Delivery'}
+                  </p>
+                  {order.trackingId && order.trackingId !== 'None' && (
+                    <p className="text-xs font-mono text-muted-foreground mt-1">
+                      Tracking ID: <span className="text-black font-bold select-all">{order.trackingId}</span>
+                    </p>
+                  )}
+                </div>
+
+                {order.trackingLink && order.trackingLink !== 'None' && (
+                  <div>
+                    <a
+                      href={order.trackingLink.startsWith('http') ? order.trackingLink : `https://${order.trackingLink}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-neutral-800 transition-colors shadow-sm rounded-sm"
+                    >
+                      <span>Track on {order.shipperName && order.shipperName !== 'None' ? order.shipperName : 'Carrier'}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
 
