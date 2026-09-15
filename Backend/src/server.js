@@ -33,15 +33,23 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ limit: '25mb', extended: true }));
 app.use(cookieParser());
 
-// Configurable CORS from process.env.CLIENT_URL
-const allowedOrigins = (process.env.CLIENT_URL || '')
-  .split(',')
-  .map(url => url.trim())
-  .filter(Boolean);
+// Configurable CORS from process.env.CLIENT_URL with production domains
+const allowedOrigins = [
+  'https://www.hiandshi.shop',
+  'https://hiandshi.shop',
+  ...(process.env.CLIENT_URL || '')
+    .split(',')
+    .map(url => url.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+];
 
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
-  if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+  // Allow production frontend domains (with or without www)
+  if (/^https?:\/\/(www\.)?hiandshi\.shop$/.test(origin)) {
     return true;
   }
   // Allow any localhost or 127.0.0.1 origin on any port in development
