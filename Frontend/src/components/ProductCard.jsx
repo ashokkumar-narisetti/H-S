@@ -1,25 +1,22 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function ProductCard({ product }) {
   const [isHovered, setIsHovered] = useState(false);
-  const addToCart = useCartStore(state => state.addToCart);
   const { wishlistItems, toggleWishlist } = useWishlistStore();
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const navigate = useNavigate();
 
   const isWishlisted = wishlistItems.some(item => item.id === product.id);
 
-  const handleAddToCart = (e) => {
-    e.preventDefault(); // Prevent navigating to product detail
-    // Defaulting to the first available size for quick add
-    const defaultSize = product.sizes[0];
-    addToCart(product, defaultSize, 1);
+  const handleViewProduct = (e) => {
+    e.preventDefault();
+    navigate(`/product/${product.id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleWishlistToggle = (e) => {
@@ -84,15 +81,15 @@ export default function ProductCard({ product }) {
           </div>
         )}
 
-        {/* Quick Add Overlay */}
+        {/* View Product Overlay */}
         {product.inStock && (
           <div className={`absolute bottom-0 left-0 w-full p-4 transition-transform duration-300 ${isHovered ? 'translate-y-0' : 'translate-y-full'} z-20`}>
             <button 
-              onClick={handleAddToCart}
+              onClick={handleViewProduct}
               className="w-full bg-black text-white py-3 font-bold uppercase text-xs tracking-widest hover:bg-white hover:text-black border-2 border-black transition-colors flex items-center justify-center gap-2"
             >
-              <ShoppingBag className="w-4 h-4" />
-              Quick Add
+              <Eye className="w-4 h-4" />
+              View Product
             </button>
           </div>
         )}

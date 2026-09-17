@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../store/useCartStore';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, MapPin, Info, CheckCircle, Tag, X, Sparkles } from 'lucide-react';
+import { Minus, Plus, Trash2, MapPin, Info, CheckCircle, Tag, X, Sparkles, AlertCircle } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const { cartItems, clearCart, updateQuantity, removeFromCart } = useCartStore();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showGstInfo, setShowGstInfo] = useState(false);
   const gstInfoRef = useRef(null);
 
@@ -246,8 +247,13 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    setShowCancellationModal(true);
+  };
+
+  const executePlaceOrder = async () => {
+    setShowCancellationModal(false);
     setIsProcessing(true);
     
     try {
@@ -673,6 +679,13 @@ export default function CheckoutPage() {
                 <span className="font-bold uppercase tracking-widest text-lg">Total</span>
                 <span className="font-bold text-2xl">₹{total.toFixed(2)}</span>
               </div>
+
+              {/* Billing Queries Note */}
+              <div className="mt-4 pt-3 border-t border-border/60">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-bold text-foreground">Note:</span> if any queries do refer to terms and conditions of <Link to="/terms" className="underline hover:text-black font-semibold">Billing policy</Link> and also do check <Link to="/help" className="underline hover:text-black font-semibold">Help</Link>
+                </p>
+              </div>
             </section>
 
             {/* Payment Section */}
@@ -702,10 +715,80 @@ export default function CheckoutPage() {
             >
               {isProcessing ? 'Processing...' : `Place Order • ₹${total.toFixed(2)}`}
             </button>
+            <p className="text-[11px] text-muted-foreground text-center mt-3 leading-relaxed">
+              By placing your order, you agree to the H&S <Link to="/terms" target="_blank" className="underline font-semibold text-foreground hover:text-black">Terms & Conditions</Link> and <Link to="/terms#cancellation" target="_blank" className="underline font-semibold text-foreground hover:text-black">Cancellation Policy</Link>.
+            </p>
           </form>
         </div>
       </div>
       
+      {/* Cancellation Policy Popup Modal */}
+      <AnimatePresence>
+        {showCancellationModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white border border-border p-6 sm:p-8 max-w-lg w-full shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowCancellationModal(false)}
+                className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground transition-colors"
+                type="button"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0 text-amber-600">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold uppercase tracking-wider text-base text-foreground">
+                    Cancellation Policy Notice
+                  </h3>
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mt-0.5">
+                    Order Confirmation
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-muted/40 border border-border p-4 mb-6 rounded-sm">
+                <p className="text-sm font-medium text-foreground leading-relaxed">
+                  “I am aware that there is a 50% cancellation fee in first 36 hrs and 100% post 36 hrs as per <Link to="/terms" target="_blank" className="underline font-bold hover:text-black">Terms and Condition Policies of H&S</Link>”
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCancellationModal(false)}
+                  className="w-full sm:w-auto px-5 py-3 border border-border text-xs font-bold uppercase tracking-widest hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executePlaceOrder}
+                  disabled={isProcessing}
+                  className="w-full sm:w-auto px-6 py-3 bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-black/90 transition-colors disabled:opacity-50"
+                >
+                  {isProcessing ? 'Placing Order...' : 'Confirm & Place Order'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Success Animation Overlay */}
       <AnimatePresence>
         {showSuccess && (

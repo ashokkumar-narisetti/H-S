@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
 import { useCatalogStore } from '../store/useCatalogStore';
+import logoImg from '../assets/logo.png';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -134,13 +135,14 @@ export default function Navbar() {
           </div>
 
           {/* Center: Brand Logo */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex-shrink-0 flex flex-col items-center">
-            <Link to="/" className="font-heading text-4xl font-black tracking-tighter uppercase leading-none" onClick={() => window.scrollTo(0,0)}>
-              H&S
+          <div className="absolute left-1/2 -translate-x-1/2 flex-shrink-0 flex items-center justify-center">
+            <Link to="/" className="flex items-center justify-center" onClick={() => window.scrollTo(0,0)}>
+              <img 
+                src={logoImg} 
+                alt="H&S - Hi & Shi" 
+                className={`w-auto object-contain transition-all duration-300 hover:opacity-85 ${isScrolled ? 'h-9 md:h-10' : 'h-10 md:h-12'}`}
+              />
             </Link>
-            <span className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground font-bold mt-1">
-              Hi & Shi
-            </span>
           </div>
 
           {/* Right: Profile Dropdown & Desktop Home */}

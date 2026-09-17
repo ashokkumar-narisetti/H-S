@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function HelpPage() {
   const faqSections = [
     {
@@ -40,7 +42,7 @@ export default function HelpPage() {
       faqs: [
         {
           q: "4.1 How can I contact H&S Customer Support?",
-          a: "You can contact our customer support team by sending an email.\n\nPlease include the following details in your email:\n- Customer Name\n- Phone Number\n- Order ID (if available)\n- Description of the issue\n- Photos or videos (if required)\n\nOur support team will get back to you as quickly as possible."
+          a: "You can contact our customer support team by sending an email to contact@assimpleasthat.shop.\n\nPlease include the following details in your email:\n- Customer Name\n- Phone Number\n- Order ID (if available)\n- Description of the issue\n- Photos or videos (if required, e.g. unboxing video)\n\nOur support team will get back to you as quickly as possible."
         }
       ]
     }
@@ -68,14 +70,22 @@ export default function HelpPage() {
         ))}
       </div>
 
-      <div className="mt-20 text-center border-t border-border pt-12">
+      <div className="mt-20 text-center border-t border-border pt-12 space-y-4">
         <p className="text-sm uppercase tracking-widest mb-4">Still need help?</p>
-        <button 
-          onClick={() => window.location.href = 'mailto:support@yourdomain.com'}
-          className="px-8 py-3 bg-foreground text-background font-bold uppercase tracking-widest text-sm hover:bg-black/80 transition-colors"
-        >
-          Contact Support
-        </button>
+        <div>
+          <a 
+            href="mailto:contact@assimpleasthat.shop"
+            className="inline-block px-8 py-3 bg-foreground text-background font-bold uppercase tracking-widest text-sm hover:bg-black/80 transition-colors"
+          >
+            Contact Support
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground uppercase tracking-widest pt-4">
+          For full policies, please review our{' '}
+          <Link to="/terms" className="underline font-bold text-foreground hover:text-black">
+            Terms & Conditions
+          </Link>
+        </p>
       </div>
     </div>
   );

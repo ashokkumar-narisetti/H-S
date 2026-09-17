@@ -28,15 +28,19 @@ function TermsAccordion() {
         onClick={() => setIsOpen(!isOpen)} 
         className="w-full p-4 flex justify-between items-center bg-muted/30 text-xs font-bold uppercase tracking-widest hover:bg-muted/50 transition-colors"
       >
-        Read Terms & Conditions
+        Read Terms & Conditions Summary
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className="p-4 text-xs text-muted-foreground leading-relaxed h-32 overflow-y-auto bg-background border-t border-border">
-          <p>By creating an account, you agree to our terms of service and privacy policy. You confirm that all information provided is accurate and you are at least 18 years of age.</p>
-          <p className="mt-2">1. Your data will be stored securely.</p>
-          <p className="mt-2">2. We will not share your data with third parties.</p>
-          <p className="mt-2">3. You can request account deletion at any time.</p>
+        <div className="p-4 text-xs text-muted-foreground leading-relaxed max-h-48 overflow-y-auto bg-background border-t border-border space-y-2.5">
+          <p className="font-bold text-foreground">H&S (Owned by ASaT — As Simple as That)</p>
+          <p><strong className="text-foreground">1. Order Fulfilment:</strong> All products are designed, manufactured, quality inspected, and fulfilled by H&S and authorized partners.</p>
+          <p><strong className="text-foreground">2. Cancellation Policy:</strong> Cancellation within 36 hours incurs a 50% cancellation fee. After 36 hours, orders are confirmed with a 100% cancellation fee.</p>
+          <p><strong className="text-foreground">3. Returns & Exchanges:</strong> No returns or exchanges for wrong size/color selection or preference. Exchanges are accepted only for verified defects or transit damage supported by an uninterrupted unboxing video.</p>
+          <p><strong className="text-foreground">4. Privacy & IP:</strong> Customer data is protected and never sold. All designs, artwork, graphics, and prints are exclusive intellectual property of H&S and ASaT.</p>
+          <Link to="/terms" target="_blank" className="text-foreground font-bold underline uppercase tracking-wider text-[11px] block pt-2 hover:text-black">
+            View Full Terms & Conditions &rarr;
+          </Link>
         </div>
       )}
     </div>
@@ -250,9 +254,9 @@ export default function AuthPage() {
             
             <TermsAccordion />
             <label className="flex items-start gap-3 mt-4 cursor-pointer">
-              <input required type="checkbox" className="w-5 h-5 accent-foreground mt-0.5" />
+              <input required type="checkbox" className="w-5 h-5 accent-foreground mt-0.5 flex-shrink-0" />
               <span className="text-xs uppercase tracking-widest text-muted-foreground leading-relaxed">
-                I accept the Terms & Conditions and confirm I am over 18 years old.
+                I accept the <Link to="/terms" target="_blank" className="text-foreground underline font-bold hover:text-black">Terms & Conditions</Link> & <Link to="/terms#privacy" target="_blank" className="text-foreground underline font-bold hover:text-black">Privacy Policy</Link> and confirm I am over 18 years old.
               </span>
             </label>
           </>
