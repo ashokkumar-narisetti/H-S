@@ -191,7 +191,10 @@ model Order {
 
   // Price Adjustment & Cancel Requests
   cancelReason          String?
-  cancelRequested       Boolean @default(false)
+  cancelRequested       Boolean   @default(false)
+  cancelledByRole       String?
+  cancelledByUserId     String?
+  cancelledAt           DateTime?
   priceAdjustmentAmount Float?
   priceAdjustmentReason String?
   priceAdjustmentStatus String?

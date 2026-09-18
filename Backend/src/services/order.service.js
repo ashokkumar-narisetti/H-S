@@ -364,10 +364,8 @@ export const formatOrderForUi = (order) => {
     backImg = 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=800&auto=format&fit=crop&q=80';
   }
 
-  // Resolve accurate manufacturer payment from DB or calculate from product catalog manufacturePrice
-  const matchedColor = colorAssets.matchedColor;
-
   // Resolve color/product-specific catalog manufacturing price
+  const matchedColor = colorAssets.matchedColor;
   const colorMfgPrice = (matchedColor && typeof matchedColor.manufacturePrice === 'number' && matchedColor.manufacturePrice > 0)
     ? matchedColor.manufacturePrice
     : null;
@@ -375,68 +373,6 @@ export const formatOrderForUi = (order) => {
     ? product.manufacturePrice
     : null;
   const catalogMfgPrice = colorMfgPrice || productMfgPrice;
-
-  // Resolve detailed breakdown from color or product
-  const rawBaseCost = (matchedColor && typeof matchedColor.baseCost === 'number')
-    ? matchedColor.baseCost
-    : (product.priceBreakdown && typeof product.priceBreakdown.baseCost === 'number')
-      ? product.priceBreakdown.baseCost
-      : null;
-
-  const rawPrintCost = (matchedColor && typeof matchedColor.printingCost === 'number')
-    ? matchedColor.printingCost
-    : (product.priceBreakdown && typeof product.priceBreakdown.printingCost === 'number')
-      ? product.priceBreakdown.printingCost
-      : null;
-
-  const rawShipCost = (matchedColor && typeof matchedColor.shippingCost === 'number')
-    ? matchedColor.shippingCost
-    : (product.priceBreakdown && typeof product.priceBreakdown.shippingCost === 'number')
-      ? product.priceBreakdown.shippingCost
-      : null;
-
-  const rawOtherCost = (matchedColor && typeof matchedColor.additionalCost === 'number')
-    ? matchedColor.additionalCost
-    : (product.priceBreakdown && typeof product.priceBreakdown.additionalCost === 'number')
-      ? product.priceBreakdown.additionalCost
-      : null;
-
-  const hasAnyExplicitBreakdown = (rawBaseCost !== null || rawPrintCost !== null || rawShipCost !== null || rawOtherCost !== null);
-
-  let resolvedMfgPayment = (typeof order.mfgPayment === 'number' && order.mfgPayment > 0)
-    ? order.mfgPayment
-    : 0;
-
-  if (resolvedMfgPayment === 0 && Array.isArray(order.items) && order.items.length > 0) {
-    let computedMfg = 0;
-    for (const it of order.items) {
-      const itColorAssets = resolveColorAssets(it.product || {}, it.color);
-      const itColorMfg = itColorAssets.matchedColor && typeof itColorAssets.matchedColor.manufacturePrice === 'number' && itColorAssets.matchedColor.manufacturePrice > 0
-        ? itColorAssets.matchedColor.manufacturePrice
-        : null;
-      const unitMfg = itColorMfg
-        || ((typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
-          ? it.product.manufacturePrice
-          : Math.round((it.price || it.product?.price || 0) * 0.6));
-      computedMfg += unitMfg * (it.quantity || 1);
-    }
-    resolvedMfgPayment = computedMfg;
-  }
-
-  if (resolvedMfgPayment === 0) {
-    resolvedMfgPayment = catalogMfgPrice || Math.round((order.totalPrice || 100) * 0.6);
-  }
-
-  // Calculate authoritative breakdown costs
-  const baseProductCost = rawBaseCost !== null
-    ? rawBaseCost
-    : (hasAnyExplicitBreakdown
-        ? Math.max(0, (catalogMfgPrice || resolvedMfgPayment) - (rawPrintCost || 0) - (rawShipCost || 0) - (rawOtherCost || 0))
-        : (catalogMfgPrice || resolvedMfgPayment));
-
-  const printCost = rawPrintCost !== null ? rawPrintCost : 0;
-  const shipCost = rawShipCost !== null ? rawShipCost : 0;
-  const otherCost = rawOtherCost !== null ? rawOtherCost : 0;
 
   // Authoritative coupon resolution with mathematical fallback
   let resolvedCouponCode = order.couponCode || null;
@@ -474,29 +410,47 @@ export const formatOrderForUi = (order) => {
     let itBack = itColorAssets.backImg || itProduct.images?.[1] || itFront;
     const itMatched = itColorAssets.matchedColor;
 
-    const itBaseCost = (itMatched && typeof itMatched.baseCost === 'number')
-      ? itMatched.baseCost
-      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.baseCost === 'number')
-        ? itProduct.priceBreakdown.baseCost
-        : ((typeof itProduct.manufacturePrice === 'number' && itProduct.manufacturePrice > 0) ? itProduct.manufacturePrice : Math.round((it.price || itProduct.price || 0) * 0.6));
+    // Resolve color-specific manufacturing price
+    const itColorMfgPrice = (itMatched && typeof itMatched.manufacturePrice === 'number' && itMatched.manufacturePrice > 0)
+      ? itMatched.manufacturePrice
+      : null;
+    const itProductMfgPrice = (typeof itProduct.manufacturePrice === 'number' && itProduct.manufacturePrice > 0)
+      ? itProduct.manufacturePrice
+      : null;
+    const itTargetMfgPrice = itColorMfgPrice || itProductMfgPrice;
 
+    // Resolve component breakdown costs
     const itPrintCost = (itMatched && typeof itMatched.printingCost === 'number')
       ? itMatched.printingCost
-      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.printingCost === 'number')
-        ? itProduct.priceBreakdown.printingCost
-        : 0;
+      : (itMatched ? 0 : (itProduct.priceBreakdown?.printingCost || 0));
 
     const itShipCost = (itMatched && typeof itMatched.shippingCost === 'number')
       ? itMatched.shippingCost
-      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.shippingCost === 'number')
-        ? itProduct.priceBreakdown.shippingCost
-        : 0;
+      : (itMatched ? 0 : (itProduct.priceBreakdown?.shippingCost || 0));
 
     const itOtherCost = (itMatched && typeof itMatched.additionalCost === 'number')
       ? itMatched.additionalCost
-      : (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.additionalCost === 'number')
-        ? itProduct.priceBreakdown.additionalCost
-        : 0;
+      : (itMatched ? 0 : (itProduct.priceBreakdown?.additionalCost || 0));
+
+    const itExtraCostsTotal = itPrintCost + itShipCost + itOtherCost;
+
+    let itBaseCost = 0;
+    if (itMatched && typeof itMatched.baseCost === 'number') {
+      itBaseCost = itMatched.baseCost;
+    } else if (itTargetMfgPrice !== null) {
+      itBaseCost = Math.max(0, itTargetMfgPrice - itExtraCostsTotal);
+    } else if (itProduct.priceBreakdown && typeof itProduct.priceBreakdown.baseCost === 'number') {
+      itBaseCost = itProduct.priceBreakdown.baseCost;
+    } else {
+      itBaseCost = 0;
+    }
+
+    // Ensure mathematical consistency: if itTargetMfgPrice is defined, itBaseCost + itExtraCostsTotal must equal itTargetMfgPrice
+    if (itTargetMfgPrice !== null && (itBaseCost + itExtraCostsTotal !== itTargetMfgPrice)) {
+      itBaseCost = Math.max(0, itTargetMfgPrice - itExtraCostsTotal);
+    }
+
+    const itTotalBreakdown = Number((itBaseCost + itPrintCost + itShipCost + itOtherCost).toFixed(2));
 
     return {
       id: it.id || `item-${idx}`,
@@ -507,6 +461,15 @@ export const formatOrderForUi = (order) => {
       color: it.color || 'Standard',
       quantity: it.quantity || 1,
       price: typeof it.price === 'number' ? it.price : (Number(itProduct.price) || 0),
+      unitMfgPrice: itTotalBreakdown,
+      itemMfgTotal: Number((itTotalBreakdown * (it.quantity || 1)).toFixed(2)),
+      costBreakdown: {
+        baseCost: itBaseCost,
+        printingCost: itPrintCost,
+        shippingCost: itShipCost,
+        otherCost: itOtherCost,
+        total: itTotalBreakdown
+      },
       image: itFront,
       images: Array.isArray(itProduct.images) && itProduct.images.length > 0 ? itProduct.images : (itFront ? [itFront] : []),
       productDetails: {
@@ -531,7 +494,7 @@ export const formatOrderForUi = (order) => {
           printingCost: itPrintCost,
           shippingCost: itShipCost,
           otherCost: itOtherCost,
-          total: Number((itBaseCost + itPrintCost + itShipCost + itOtherCost).toFixed(2))
+          total: itTotalBreakdown
         },
         printingDetails: {
           method: itColorAssets.printType ? `${itColorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
@@ -579,6 +542,29 @@ export const formatOrderForUi = (order) => {
   const resolvedTaxPrice = Number(order.taxPrice) || 0;
   const resolvedShippingPrice = Number(order.shippingPrice) || 0;
 
+  // Authoritative total manufacturing payment calculation from items
+  const computedItemsMfgTotal = formattedItems.reduce((sum, item) => {
+    const itemMfg = item.productDetails?.costBreakdown?.total ?? item.productDetails?.baseCost ?? 0;
+    return sum + (itemMfg * (item.quantity || 1));
+  }, 0);
+
+  let resolvedMfgPayment = 0;
+  if (order.priceAdjustmentStatus === 'Approved') {
+    resolvedMfgPayment = order.mfgPayment;
+  } else if (computedItemsMfgTotal > 0) {
+    resolvedMfgPayment = computedItemsMfgTotal;
+  } else if (typeof order.mfgPayment === 'number' && order.mfgPayment > 0) {
+    resolvedMfgPayment = order.mfgPayment;
+  } else {
+    resolvedMfgPayment = catalogMfgPrice || (typeof order.mfgPayment === 'number' ? order.mfgPayment : 0);
+  }
+
+  // Top-level breakdown fallback
+  const baseProductCost = formattedItems[0]?.productDetails?.baseCost ?? resolvedMfgPayment;
+  const printCost = formattedItems[0]?.productDetails?.printingCost ?? 0;
+  const shipCost = formattedItems[0]?.productDetails?.shippingCost ?? 0;
+  const otherCost = formattedItems[0]?.productDetails?.otherCost ?? 0;
+
   return {
     id: order.id,
     createdAt: order.createdAt || null,
@@ -605,14 +591,17 @@ export const formatOrderForUi = (order) => {
     shipperName: order.shipperName || 'None',
     trackingId: order.trackingNumber || 'None',
     trackingLink: order.trackingLink || 'None',
-    status: order.cancelRequested ? 'Cancel Requested' : mapDbStatusToUi(order.status),
+    status: order.status === 'CANCELED' ? 'Cancelled' : (order.cancelRequested ? 'Cancel Requested' : mapDbStatusToUi(order.status)),
     previousStatus: mapDbStatusToUi(order.status),
     cancelReason: order.cancelReason || '',
-    cancelRequested: order.cancelRequested || false,
+    cancelRequested: order.status === 'CANCELED' ? false : Boolean(order.cancelRequested),
+    cancelledByRole: order.cancelledByRole || (order.status === 'CANCELED' ? 'ADMIN' : null),
+    cancelledByUserId: order.cancelledByUserId || null,
+    cancelledAt: order.cancelledAt ? new Date(order.cancelledAt).toISOString() : null,
     priceAdjustmentStatus: order.priceAdjustmentStatus || 'None',
     priceAdjustmentAmount: order.priceAdjustmentAmount || 0,
     priceAdjustmentReason: order.priceAdjustmentReason || '',
-    mfgPaymentStatus: order.mfgPaymentStatus || 'Unpaid',
+    mfgPaymentStatus: order.status === 'CANCELED' ? 'Excluded' : (order.mfgPaymentStatus || 'Unpaid'),
     mfgPaidDate: order.mfgPaidDate || null,
     completedDate: order.completedDate || null,
     couponCode: resolvedCouponCode,
@@ -696,19 +685,29 @@ export const createDirectOrder = async (orderData, creatorUserId) => {
 
     const parsedMfgPayment = Number(mfgPayment);
     let validMfgPayment = (parsedMfgPayment > 0) ? parsedMfgPayment : 0;
-    if (!validMfgPayment && product) {
+    if (product) {
       const colorAssets = resolveColorAssets(product, color);
-      const colorMfgPrice = colorAssets.matchedColor && typeof colorAssets.matchedColor.manufacturePrice === 'number' && colorAssets.matchedColor.manufacturePrice > 0
-        ? colorAssets.matchedColor.manufacturePrice
+      const matched = colorAssets.matchedColor;
+      const colorMfgPrice = (matched && typeof matched.manufacturePrice === 'number' && matched.manufacturePrice > 0)
+        ? matched.manufacturePrice
         : null;
-      if (colorMfgPrice) {
-        validMfgPayment = colorMfgPrice;
-      } else if (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
-        validMfgPayment = product.manufacturePrice;
+      const colorBreakdownTotal = (matched && (typeof matched.baseCost === 'number' || typeof matched.printingCost === 'number'))
+        ? ((Number(matched.baseCost) || 0) + (Number(matched.printingCost) || 0) + (Number(matched.shippingCost) || 0) + (Number(matched.additionalCost) || 0))
+        : 0;
+      const targetColorMfg = colorMfgPrice || (colorBreakdownTotal > 0 ? colorBreakdownTotal : null);
+
+      if (!validMfgPayment || (targetColorMfg && validMfgPayment === product.manufacturePrice && targetColorMfg !== product.manufacturePrice)) {
+        if (targetColorMfg) {
+          validMfgPayment = targetColorMfg;
+        } else if (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0) {
+          validMfgPayment = product.manufacturePrice;
+        }
       }
     }
     if (!validMfgPayment) {
-      validMfgPayment = Math.round(validAmountPaid * 0.6);
+      validMfgPayment = (typeof product?.manufacturePrice === 'number' && product.manufacturePrice > 0)
+        ? product.manufacturePrice
+        : 0;
     }
 
     if (!product) {
@@ -951,9 +950,20 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
       const unitPrice = product.price;
       itemsPrice += unitPrice * item.quantity;
 
-      const unitMfgPrice = (typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
-        ? product.manufacturePrice
-        : Math.round(unitPrice * 0.6);
+      const colorAssets = resolveColorAssets(product, item.color);
+      const matched = colorAssets.matchedColor;
+      const colorMfgPrice = (matched && typeof matched.manufacturePrice === 'number' && matched.manufacturePrice > 0)
+        ? matched.manufacturePrice
+        : null;
+      const colorBreakdownTotal = (matched && (typeof matched.baseCost === 'number' || typeof matched.printingCost === 'number'))
+        ? ((Number(matched.baseCost) || 0) + (Number(matched.printingCost) || 0) + (Number(matched.shippingCost) || 0) + (Number(matched.additionalCost) || 0))
+        : 0;
+      const targetColorMfg = colorMfgPrice || (colorBreakdownTotal > 0 ? colorBreakdownTotal : null);
+
+      const unitMfgPrice = targetColorMfg
+        || ((typeof product.manufacturePrice === 'number' && product.manufacturePrice > 0)
+          ? product.manufacturePrice
+          : 0);
       totalMfgPayment += unitMfgPrice * item.quantity;
 
       itemsToCreate.push({
@@ -1208,7 +1218,10 @@ export const completeOrder = async (id, completedDate) => {
 /**
  * Cancels order directly with reason and replenishes inventory.
  */
-export const cancelOrder = async (id, cancelReason) => {
+/**
+ * Cancels order directly with reason, audit trail, and replenishes inventory.
+ */
+export const cancelOrder = async (id, cancelReason, actor = { role: 'ADMIN', id: null }) => {
   return await prisma.$transaction(async (tx) => {
     const existing = await tx.order.findUnique({
       where: { id },
@@ -1217,8 +1230,31 @@ export const cancelOrder = async (id, cancelReason) => {
     if (!existing) {
       throw new Error('Order not found');
     }
+    if (actor?.role === 'MANUFACTURER' && existing.manufacturerId && existing.manufacturerId !== actor.id) {
+      throw new Error('Unauthorized to cancel this order');
+    }
+    const cancelledByRole = (actor?.role || '').toUpperCase() === 'MANUFACTURER' ? 'MANUFACTURER' : 'ADMIN';
+    const finalReason = cancelReason && cancelReason.trim()
+      ? cancelReason.trim()
+      : (existing.cancelReason || null);
+
     if (existing.status === 'CANCELED') {
-      return formatOrderForUi(existing);
+      const updated = await tx.order.update({
+        where: { id },
+        data: {
+          cancelReason: finalReason,
+          cancelledByRole: existing.cancelledByRole || cancelledByRole,
+          cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
+          cancelledAt: existing.cancelledAt || new Date(),
+          cancelRequested: false
+        },
+        include: {
+          items: { include: { product: true } },
+          user: true,
+          manufacturer: true
+        }
+      });
+      return formatOrderForUi(updated);
     }
 
     // Replenish stock for all items
@@ -1240,7 +1276,10 @@ export const cancelOrder = async (id, cancelReason) => {
       where: { id },
       data: {
         status: 'CANCELED',
-        cancelReason: cancelReason || 'Cancelled by Admin',
+        cancelReason: finalReason,
+        cancelledByRole,
+        cancelledByUserId: actor?.id || null,
+        cancelledAt: new Date(),
         cancelRequested: false
       },
       include: {
@@ -1309,12 +1348,16 @@ export const handlePriceAdjustmentResponse = async (id, action) => {
 /**
  * Submits an order cancellation request from Manufacturer.
  */
-export const requestOrderCancellation = async (id, cancelReason) => {
+export const requestOrderCancellation = async (id, cancelReason, actor = { role: 'MANUFACTURER', id: null }) => {
+  const finalReason = cancelReason && cancelReason.trim() ? cancelReason.trim() : null;
   const updated = await prisma.order.update({
     where: { id },
     data: {
       cancelRequested: true,
-      cancelReason: cancelReason || 'Manufacturer requested cancellation'
+      cancelReason: finalReason,
+      cancelledByRole: 'MANUFACTURER',
+      cancelledByUserId: actor?.id || null,
+      cancelledAt: new Date()
     },
     include: {
       items: { include: { product: true } },
@@ -1329,24 +1372,69 @@ export const requestOrderCancellation = async (id, cancelReason) => {
 /**
  * Responds to a cancellation request (accept or reject).
  */
-export const handleCancellationResponse = async (id, action) => {
+export const handleCancellationResponse = async (id, action, actor = { role: 'ADMIN', id: null }) => {
   const isAccepted = action === 'accept';
 
-  const updated = await prisma.order.update({
-    where: { id },
-    data: {
-      cancelRequested: false,
-      status: isAccepted ? 'CANCELED' : undefined,
-      cancelReason: isAccepted ? 'Cancellation request accepted' : null
-    },
-    include: {
-      items: { include: { product: true } },
-      user: true,
-      manufacturer: true
+  return await prisma.$transaction(async (tx) => {
+    const existing = await tx.order.findUnique({
+      where: { id },
+      include: { items: true }
+    });
+    if (!existing) {
+      throw new Error('Order not found');
     }
-  });
 
-  return formatOrderForUi(updated);
+    if (isAccepted) {
+      if (Array.isArray(existing.items)) {
+        for (const item of existing.items) {
+          if (item.productId && item.quantity > 0) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: { increment: item.quantity },
+                inStock: true
+              }
+            });
+          }
+        }
+      }
+
+      const updated = await tx.order.update({
+        where: { id },
+        data: {
+          cancelRequested: false,
+          status: 'CANCELED',
+          cancelReason: existing.cancelReason || null,
+          cancelledByRole: existing.cancelledByRole || 'MANUFACTURER',
+          cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
+          cancelledAt: existing.cancelledAt || new Date()
+        },
+        include: {
+          items: { include: { product: true } },
+          user: true,
+          manufacturer: true
+        }
+      });
+      return formatOrderForUi(updated);
+    } else {
+      const updated = await tx.order.update({
+        where: { id },
+        data: {
+          cancelRequested: false,
+          cancelReason: null,
+          cancelledByRole: null,
+          cancelledByUserId: null,
+          cancelledAt: null
+        },
+        include: {
+          items: { include: { product: true } },
+          user: true,
+          manufacturer: true
+        }
+      });
+      return formatOrderForUi(updated);
+    }
+  }, { maxWait: 10000, timeout: 20000 });
 };
 
 /**

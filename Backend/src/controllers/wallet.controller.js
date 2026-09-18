@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { resolveColorAssets } from '../services/order.service.js';
 
 // Helper to resolve an order by UUID or TXN- prefix
 const findOrderByIdOrTxn = async (txnOrOrderId) => {
@@ -28,20 +29,39 @@ const findOrderByIdOrTxn = async (txnOrOrderId) => {
 
 // Helper to compute accurate mfg payment from order record or catalog manufacturePrice
 const computeOrderMfgPayment = (order) => {
-  if (typeof order.mfgPayment === 'number' && order.mfgPayment > 0) {
-    return order.mfgPayment;
+  if (!order || order.status === 'CANCELED' || order.status === 'CANCELLED' || order.cancelRequested) {
+    return 0;
   }
   if (Array.isArray(order.items) && order.items.length > 0) {
     let computed = 0;
     for (const it of order.items) {
-      const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
-        ? it.product.manufacturePrice
-        : Math.round((it.price || it.product?.price || 0) * 0.6);
+      const itColorAssets = resolveColorAssets(it.product || {}, it.color);
+      const matched = itColorAssets.matchedColor;
+      const colorMfgPrice = (matched && typeof matched.manufacturePrice === 'number' && matched.manufacturePrice > 0)
+        ? matched.manufacturePrice
+        : null;
+      const colorBreakdownTotal = (matched && (typeof matched.baseCost === 'number' || typeof matched.printingCost === 'number'))
+        ? ((Number(matched.baseCost) || 0) + (Number(matched.printingCost) || 0) + (Number(matched.shippingCost) || 0) + (Number(matched.additionalCost) || 0))
+        : 0;
+      const targetColorMfg = colorMfgPrice || (colorBreakdownTotal > 0 ? colorBreakdownTotal : null);
+
+      const unitMfg = targetColorMfg
+        || ((typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
+          ? it.product.manufacturePrice
+          : 0);
       computed += unitMfg * (it.quantity || 1);
     }
-    if (computed > 0) return computed;
+    if (computed > 0) {
+      if (order.priceAdjustmentStatus === 'Approved' && order.priceAdjustmentAmount) {
+        computed += order.priceAdjustmentAmount;
+      }
+      return computed;
+    }
   }
-  return Math.round((Number(order.totalPrice) || 100) * 0.6);
+  if (typeof order.mfgPayment === 'number' && order.mfgPayment > 0) {
+    return order.mfgPayment;
+  }
+  return 0;
 };
 
 // ==========================================
@@ -54,17 +74,24 @@ const computeOrderMfgPayment = (order) => {
 export const getMfgWalletMetrics = async (req, res) => {
   try {
     const userRole = (req.user?.role || '').toUpperCase();
-    const whereClause = {};
+    const whereConditions = [
+      { status: { not: 'CANCELED' } },
+      { cancelRequested: false }
+    ];
 
     if (userRole === 'MANUFACTURER' && req.user?.id) {
-      whereClause.OR = [
-        { manufacturerId: req.user.id },
-        { manufacturerId: null }
-      ];
+      whereConditions.push({
+        OR: [
+          { manufacturerId: req.user.id },
+          { manufacturerId: null }
+        ]
+      });
     }
 
     const orders = await prisma.order.findMany({
-      where: whereClause,
+      where: {
+        AND: whereConditions
+      },
       include: {
         items: {
           select: {
@@ -78,7 +105,9 @@ export const getMfgWalletMetrics = async (req, res) => {
               select: {
                 id: true,
                 price: true,
-                manufacturePrice: true
+                manufacturePrice: true,
+                colors: true,
+                priceBreakdown: true
               }
             }
           }
@@ -132,17 +161,24 @@ export const getMfgWalletMetrics = async (req, res) => {
 export const getMfgWalletEarnings = async (req, res) => {
   try {
     const userRole = (req.user?.role || '').toUpperCase();
-    const whereClause = {};
+    const whereConditions = [
+      { status: { not: 'CANCELED' } },
+      { cancelRequested: false }
+    ];
 
     if (userRole === 'MANUFACTURER' && req.user?.id) {
-      whereClause.OR = [
-        { manufacturerId: req.user.id },
-        { manufacturerId: null }
-      ];
+      whereConditions.push({
+        OR: [
+          { manufacturerId: req.user.id },
+          { manufacturerId: null }
+        ]
+      });
     }
 
     const orders = await prisma.order.findMany({
-      where: whereClause,
+      where: {
+        AND: whereConditions
+      },
       include: {
         items: {
           select: {
@@ -156,7 +192,9 @@ export const getMfgWalletEarnings = async (req, res) => {
               select: {
                 id: true,
                 price: true,
-                manufacturePrice: true
+                manufacturePrice: true,
+                colors: true,
+                priceBreakdown: true
               }
             }
           }
@@ -214,6 +252,10 @@ export const getMfgWalletEarnings = async (req, res) => {
 export const getAdminWalletMetrics = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
+      where: {
+        status: { not: 'CANCELED' },
+        cancelRequested: false
+      },
       include: {
         items: {
           select: {
@@ -225,7 +267,9 @@ export const getAdminWalletMetrics = async (req, res) => {
               select: {
                 id: true,
                 price: true,
-                manufacturePrice: true
+                manufacturePrice: true,
+                colors: true,
+                priceBreakdown: true
               }
             }
           }
@@ -285,6 +329,10 @@ export const getAdminWalletMetrics = async (req, res) => {
 export const getAdminWalletTransactions = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
+      where: {
+        status: { not: 'CANCELED' },
+        cancelRequested: false
+      },
       include: {
         items: {
           select: {
@@ -298,7 +346,9 @@ export const getAdminWalletTransactions = async (req, res) => {
               select: {
                 id: true,
                 price: true,
-                manufacturePrice: true
+                manufacturePrice: true,
+                colors: true,
+                priceBreakdown: true
               }
             }
           }
@@ -361,10 +411,10 @@ export const markAdminTransactionPaid = async (req, res) => {
     }
 
     // Financial Safety Guard: Cannot payout cancelled order
-    if (order.status === 'CANCELED') {
+    if (order.status === 'CANCELED' || order.status === 'CANCELLED' || order.cancelRequested) {
       return res.status(400).json({
         success: false,
-        message: `Cannot process payout for cancelled order ${order.id}.`
+        message: `Cannot process payout for cancelled or pending-cancellation order ${order.id}.`
       });
     }
 
@@ -384,7 +434,8 @@ export const markAdminTransactionPaid = async (req, res) => {
       where: {
         id: order.id,
         mfgPaymentStatus: { not: 'Paid' },
-        status: { not: 'CANCELED' }
+        status: { not: 'CANCELED' },
+        cancelRequested: false
       },
       data: {
         mfgPaymentStatus: 'Paid',

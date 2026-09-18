@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { resolveColorAssets } from '../services/order.service.js';
 
 // Helper to compute genuine percentage growth between two periods
 const calcGrowth = (current, previous) => {
@@ -42,6 +43,7 @@ export const getDashboardStats = async (req, res) => {
           select: {
             productId: true,
             name: true,
+            color: true,
             price: true,
             quantity: true,
             product: {
@@ -50,6 +52,7 @@ export const getDashboardStats = async (req, res) => {
                 name: true,
                 price: true,
                 manufacturePrice: true,
+                colors: true,
                 category: true,
                 coverPhoto: true
               }
@@ -150,20 +153,25 @@ export const getDashboardStats = async (req, res) => {
       const oDate = order.createdAt ? new Date(order.createdAt) : null;
       const isDelivered = order.status === 'DELIVERED';
       const isPending = order.status === 'IN_PROGRESS' || order.status === 'SHIPPING';
-      const isCanceled = order.status === 'CANCELED';
+      const isCanceled = order.status === 'CANCELED' || order.status === 'CANCELLED' || Boolean(order.cancelRequested);
 
       // Manufacturing payment / Platform Margin
       let mfgPay = Number(order.mfgPayment) || 0;
       if (mfgPay === 0 && Array.isArray(order.items) && order.items.length > 0) {
         mfgPay = order.items.reduce((acc, it) => {
-          const unitMfg = (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0)
-            ? it.product.manufacturePrice
-            : Math.round((it.price || it.product?.price || 0) * 0.6);
-          return acc + unitMfg * (it.quantity || 1);
+          const itColorAssets = resolveColorAssets(it.product || {}, it.color);
+          const matched = itColorAssets.matchedColor;
+          const colorMfgPrice = (matched && typeof matched.manufacturePrice === 'number' && matched.manufacturePrice > 0)
+            ? matched.manufacturePrice
+            : null;
+          const colorBreakdownTotal = (matched && (typeof matched.baseCost === 'number' || typeof matched.printingCost === 'number'))
+            ? ((Number(matched.baseCost) || 0) + (Number(matched.printingCost) || 0) + (Number(matched.shippingCost) || 0) + (Number(matched.additionalCost) || 0))
+            : 0;
+          const unitMfg = colorMfgPrice
+            || (colorBreakdownTotal > 0 ? colorBreakdownTotal : null)
+            || (typeof it.product?.manufacturePrice === 'number' && it.product.manufacturePrice > 0 ? it.product.manufacturePrice : 0);
+          return acc + (unitMfg * (it.quantity || 1));
         }, 0);
-      }
-      if (mfgPay === 0) {
-        mfgPay = Math.round(price * 0.6);
       }
       const orderMargin = Math.max(0, price - mfgPay);
 

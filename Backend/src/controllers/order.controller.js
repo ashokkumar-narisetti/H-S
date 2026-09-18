@@ -188,7 +188,10 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    const updated = await orderService.cancelOrder(id, cancelReason);
+    const updated = await orderService.cancelOrder(id, cancelReason, {
+      role: req.user?.role || 'ADMIN',
+      id: req.user?.id || null
+    });
 
     return res.status(200).json({
       success: true,
@@ -309,7 +312,10 @@ export const requestOrderCancellation = async (req, res) => {
       });
     }
 
-    const updated = await orderService.requestOrderCancellation(id, cancelReason);
+    const updated = await orderService.requestOrderCancellation(id, cancelReason, {
+      role: req.user?.role || 'MANUFACTURER',
+      id: req.user?.id || null
+    });
 
     return res.status(200).json({
       success: true,
@@ -354,7 +360,10 @@ export const respondToCancelRequest = async (req, res) => {
       });
     }
 
-    const updated = await orderService.handleCancellationResponse(id, action);
+    const updated = await orderService.handleCancellationResponse(id, action, {
+      role: req.user?.role || 'ADMIN',
+      id: req.user?.id || null
+    });
 
     return res.status(200).json({
       success: true,
