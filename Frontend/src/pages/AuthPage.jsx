@@ -102,6 +102,9 @@ export default function AuthPage() {
   const [dob, setDob] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   
   const selectedCountryObj = COUNTRIES.find(c => c.name === country) || COUNTRIES.find(c => c.name === 'India');
   const countryCode = selectedCountryObj?.code || '+91';
@@ -116,6 +119,36 @@ export default function AuthPage() {
   const signup = useAuthStore(state => state.signup);
   const isLoggingIn = useAuthStore(state => state.isLoggingIn);
   const isSigningUp = useAuthStore(state => state.isSigningUp);
+
+  const handleForgotPassword = async () => {
+    const email = forgotPasswordEmail.trim();
+    if (!email) {
+      toast.error('Please enter your email');
+      return;
+    }
+
+    setIsSendingReset(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to send reset email');
+      }
+
+      toast.success(data.message || 'Reset link sent successfully');
+      setForgotPasswordEmail('');
+      setIsForgotPassword(false);
+    } catch (error) {
+      toast.error(error.message || 'Unable to send reset email');
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -169,7 +202,7 @@ export default function AuthPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-left">
-        {isLogin ? (
+        {isLogin && !isForgotPassword ? (
           <>
             <input required type="email" name="email" placeholder="Email Address" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
             <div className="relative">
@@ -184,6 +217,31 @@ export default function AuthPage() {
               </button>
             </div>
           </>
+        ) : isForgotPassword ? (
+          <div className="space-y-4">
+            <input
+              type="email"
+              value={forgotPasswordEmail}
+              onChange={(e) => setForgotPasswordEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground"
+            />
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isSendingReset}
+              className="w-full py-4 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors disabled:opacity-50"
+            >
+              {isSendingReset ? 'Sending...' : 'Send Reset Link'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsForgotPassword(false)}
+              className="text-xs uppercase tracking-widest text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              Back to sign in
+            </button>
+          </div>
         ) : (
           <>
             <input required type="text" name="fullName" placeholder="Full Name" className="w-full p-4 border border-border bg-background focus:outline-none focus:border-foreground" />
@@ -262,16 +320,24 @@ export default function AuthPage() {
           </>
         )}
 
-        <button disabled={isLoggingIn || isSigningUp} type="submit" className="w-full py-4 mt-6 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors disabled:opacity-50">
-          {isLoggingIn || isSigningUp ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
-        </button>
+        {!isForgotPassword && (
+          <button disabled={isLoggingIn || isSigningUp} type="submit" className="w-full py-4 mt-6 bg-foreground text-background font-bold uppercase tracking-widest hover:bg-black/80 transition-colors disabled:opacity-50">
+            {isLoggingIn || isSigningUp ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
+          </button>
+        )}
       </form>
 
       <div className="mt-8 text-center">
         {isLogin ? (
           <>
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
-              <button className="hover:text-foreground transition-colors underline underline-offset-4">Forgot your password?</button>
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="hover:text-foreground transition-colors underline underline-offset-4"
+              >
+                Forgot your password?
+              </button>
             </p>
             <p className="text-sm uppercase tracking-wide">
               Don't have an account?{' '}

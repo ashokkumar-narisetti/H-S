@@ -20,6 +20,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 import AddressPage from './pages/AddressPage';
 import TrackingDetailPage from './pages/TrackingDetailPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,6 +51,7 @@ function AppContent() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/signup" element={<AuthPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/account" element={<AccountProfile />} />
             <Route path="/addresses" element={<AddressPage />} />
             <Route path="/wallet" element={<WalletPage />} />

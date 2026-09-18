@@ -164,12 +164,13 @@ export default function CheckoutPage() {
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  const baseSubtotalForCoupon = subtotal;
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.discountType === 'Percentage') {
-      discountAmount = (subtotal * appliedCoupon.discountValue) / 100;
+      discountAmount = (baseSubtotalForCoupon * appliedCoupon.discountValue) / 100;
     } else {
-      discountAmount = Math.min(subtotal, appliedCoupon.discountValue);
+      discountAmount = Math.min(baseSubtotalForCoupon, appliedCoupon.discountValue);
     }
   }
   discountAmount = Number(discountAmount.toFixed(2));
