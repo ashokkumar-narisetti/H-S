@@ -1261,13 +1261,19 @@ export const cancelOrder = async (id, cancelReason, actor = { role: 'ADMIN', id:
     if (Array.isArray(existing.items)) {
       for (const item of existing.items) {
         if (item.productId && item.quantity > 0) {
-          await tx.product.update({
+          const productExists = await tx.product.findUnique({
             where: { id: item.productId },
-            data: {
-              stock: { increment: item.quantity },
-              inStock: true
-            }
+            select: { id: true }
           });
+          if (productExists) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: { increment: item.quantity },
+                inStock: true
+              }
+            });
+          }
         }
       }
     }
@@ -1388,13 +1394,19 @@ export const handleCancellationResponse = async (id, action, actor = { role: 'AD
       if (Array.isArray(existing.items)) {
         for (const item of existing.items) {
           if (item.productId && item.quantity > 0) {
-            await tx.product.update({
+            const productExists = await tx.product.findUnique({
               where: { id: item.productId },
-              data: {
-                stock: { increment: item.quantity },
-                inStock: true
-              }
+              select: { id: true }
             });
+            if (productExists) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stock: { increment: item.quantity },
+                  inStock: true
+                }
+              });
+            }
           }
         }
       }
