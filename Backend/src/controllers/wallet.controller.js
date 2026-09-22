@@ -74,6 +74,16 @@ const computeOrderMfgPayment = (order) => {
 export const getMfgWalletMetrics = async (req, res) => {
   try {
     const userRole = (req.user?.role || '').toUpperCase();
+
+    // Enforce role authorization: USER is forbidden from manufacturer metrics
+    if (userRole !== 'MANUFACTURER' && userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Access restricted to Manufacturers and Administrators',
+        data: null
+      });
+    }
+
     const whereConditions = [
       { status: { not: 'CANCELED' } },
       { cancelRequested: false }
@@ -161,6 +171,16 @@ export const getMfgWalletMetrics = async (req, res) => {
 export const getMfgWalletEarnings = async (req, res) => {
   try {
     const userRole = (req.user?.role || '').toUpperCase();
+
+    // Enforce role authorization: USER is forbidden from manufacturer earnings
+    if (userRole !== 'MANUFACTURER' && userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Access restricted to Manufacturers and Administrators',
+        data: null
+      });
+    }
+
     const whereConditions = [
       { status: { not: 'CANCELED' } },
       { cancelRequested: false }
@@ -256,24 +276,14 @@ export const getAdminWalletMetrics = async (req, res) => {
         status: { not: 'CANCELED' },
         cancelRequested: false
       },
-      include: {
-        items: {
-          select: {
-            id: true,
-            name: true,
-            quantity: true,
-            price: true,
-            product: {
-              select: {
-                id: true,
-                price: true,
-                manufacturePrice: true,
-                colors: true,
-                priceBreakdown: true
-              }
-            }
-          }
-        }
+      select: {
+        id: true,
+        totalPrice: true,
+        mfgPayment: true,
+        taxPrice: true,
+        mfgPaymentStatus: true,
+        priceAdjustmentStatus: true,
+        priceAdjustmentAmount: true
       }
     });
 
@@ -285,7 +295,11 @@ export const getAdminWalletMetrics = async (req, res) => {
 
     orders.forEach(order => {
       const sale = Number(order.totalPrice) || 0;
-      const mfgPay = computeOrderMfgPayment(order);
+      const baseMfg = Number(order.mfgPayment) || 0;
+      const adj = (order.priceAdjustmentStatus === 'Approved' && order.priceAdjustmentAmount)
+        ? Number(order.priceAdjustmentAmount)
+        : 0;
+      const mfgPay = baseMfg + adj;
       const gst = Number(order.taxPrice) || 0;
 
       grossRevenue += sale;
@@ -333,26 +347,16 @@ export const getAdminWalletTransactions = async (req, res) => {
         status: { not: 'CANCELED' },
         cancelRequested: false
       },
-      include: {
-        items: {
-          select: {
-            id: true,
-            name: true,
-            size: true,
-            color: true,
-            quantity: true,
-            price: true,
-            product: {
-              select: {
-                id: true,
-                price: true,
-                manufacturePrice: true,
-                colors: true,
-                priceBreakdown: true
-              }
-            }
-          }
-        },
+      select: {
+        id: true,
+        totalPrice: true,
+        mfgPayment: true,
+        taxPrice: true,
+        priceAdjustmentStatus: true,
+        priceAdjustmentAmount: true,
+        priceAdjustmentReason: true,
+        mfgPaymentStatus: true,
+        mfgPaidDate: true,
         user: { select: { fullName: true, email: true } },
         manufacturer: { select: { companyName: true, fullName: true } }
       },
@@ -361,7 +365,11 @@ export const getAdminWalletTransactions = async (req, res) => {
 
     const transactions = orders.map(order => {
       const grossSale = Number(order.totalPrice) || 0;
-      const mfgPay = computeOrderMfgPayment(order);
+      const baseMfg = Number(order.mfgPayment) || 0;
+      const adj = (order.priceAdjustmentStatus === 'Approved' && order.priceAdjustmentAmount)
+        ? Number(order.priceAdjustmentAmount)
+        : 0;
+      const mfgPay = baseMfg + adj;
       const gstVal = Number(order.taxPrice) || 0;
       const adjStatus = order.priceAdjustmentStatus || 'None';
       const isAdjusted = Boolean(adjStatus === 'Approved' && order.priceAdjustmentAmount && order.priceAdjustmentAmount > 0);

@@ -308,7 +308,7 @@ export const resolveColorAssets = (product, orderColor) => {
   };
 };
 
-export const formatOrderForUi = (order) => {
+export const formatOrderForUi = (order, isDetail = false) => {
   const firstItem = order.items?.[0] || {};
   const product = firstItem.product || {};
   const user = order.user || {};
@@ -406,8 +406,8 @@ export const formatOrderForUi = (order) => {
   const formattedItems = rawOrderItems.map((it, idx) => {
     const itProduct = it.product || {};
     const itColorAssets = resolveColorAssets(itProduct, it.color);
-    let itFront = itColorAssets.frontImg || itProduct.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80';
-    let itBack = itColorAssets.backImg || itProduct.images?.[1] || itFront;
+    let itFront = itColorAssets.frontImg || itProduct.coverPhoto || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80';
+    let itBack = itColorAssets.backImg || itFront;
     const itMatched = itColorAssets.matchedColor;
 
     // Resolve color-specific manufacturing price
@@ -452,6 +452,11 @@ export const formatOrderForUi = (order) => {
 
     const itTotalBreakdown = Number((itBaseCost + itPrintCost + itShipCost + itOtherCost).toFixed(2));
 
+    // In list mode, only keep designFile if it is an HTTP URL or requested with isDetail
+    const resolvedItemDesignFile = (typeof itColorAssets.designFile === 'string' && (isDetail || itColorAssets.designFile.startsWith('http')))
+      ? itColorAssets.designFile
+      : null;
+
     return {
       id: it.id || `item-${idx}`,
       productId: it.productId || itProduct.id || null,
@@ -471,13 +476,13 @@ export const formatOrderForUi = (order) => {
         total: itTotalBreakdown
       },
       image: itFront,
-      images: Array.isArray(itProduct.images) && itProduct.images.length > 0 ? itProduct.images : (itFront ? [itFront] : []),
+      images: itFront ? [itFront] : (itProduct.coverPhoto ? [itProduct.coverPhoto] : []),
       productDetails: {
         mfgProductName: itProduct.manufactureName || itProduct.name || it.name || 'MFG Athletic Product',
         frontViewUrl: itFront,
         backViewUrl: itBack,
         neckLogoUrl: itColorAssets.isLight ? '/assests/neckband logo/neck logo black.png' : '/assests/neckband logo/neck logo white.png',
-        designFile: itColorAssets.designFile || null,
+        designFile: resolvedItemDesignFile,
         printType: itColorAssets.printType,
         printPosition: itColorAssets.printPosition,
         printSpecs: itColorAssets.printSpecs,
@@ -500,7 +505,7 @@ export const formatOrderForUi = (order) => {
           method: itColorAssets.printType ? `${itColorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
           printType: itColorAssets.printType,
           printPosition: itColorAssets.printPosition,
-          designFile: itColorAssets.designFile || null,
+          designFile: resolvedItemDesignFile,
           frontPrintSpec: itColorAssets.printSpecs,
           backPrintSpec: (itColorAssets.printPlacements && itColorAssets.printPlacements.length > 1)
             ? itColorAssets.printPlacements[1].specs
@@ -517,7 +522,6 @@ export const formatOrderForUi = (order) => {
         price: itProduct.price || it.price || 0,
         manufacturePrice: itProduct.manufacturePrice || null,
         manufactureName: itProduct.manufactureName || null,
-        images: Array.isArray(itProduct.images) && itProduct.images.length > 0 ? itProduct.images : (itFront ? [itFront] : []),
         coverPhoto: itProduct.coverPhoto || itFront || null
       }
     };
@@ -564,6 +568,10 @@ export const formatOrderForUi = (order) => {
   const printCost = formattedItems[0]?.productDetails?.printingCost ?? 0;
   const shipCost = formattedItems[0]?.productDetails?.shippingCost ?? 0;
   const otherCost = formattedItems[0]?.productDetails?.otherCost ?? 0;
+
+  const resolvedTopDesignFile = (typeof colorAssets.designFile === 'string' && (isDetail || colorAssets.designFile.startsWith('http')))
+    ? colorAssets.designFile
+    : null;
 
   return {
     id: order.id,
@@ -613,7 +621,7 @@ export const formatOrderForUi = (order) => {
       frontViewUrl: frontImg,
       backViewUrl: backImg,
       neckLogoUrl: colorAssets.isLight ? '/assests/neckband logo/neck logo black.png' : '/assests/neckband logo/neck logo white.png',
-      designFile: colorAssets.designFile || null,
+      designFile: resolvedTopDesignFile,
       printType: colorAssets.printType,
       printPosition: colorAssets.printPosition,
       printSpecs: colorAssets.printSpecs,
@@ -636,7 +644,7 @@ export const formatOrderForUi = (order) => {
         method: colorAssets.printType ? `${colorAssets.printType} Printing` : 'Direct-to-Film (DTF) Heat Transfer',
         printType: colorAssets.printType,
         printPosition: colorAssets.printPosition,
-        designFile: colorAssets.designFile || null,
+        designFile: resolvedTopDesignFile,
         frontPrintSpec: colorAssets.printSpecs,
         backPrintSpec: (colorAssets.printPlacements && colorAssets.printPlacements.length > 1)
           ? colorAssets.printPlacements[1].specs
@@ -936,15 +944,30 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
     const itemsToCreate = [];
     const itemsForShipping = [];
 
+    // Batch load all ordered products to eliminate N+1 queries
+    const productIds = Array.from(new Set(orderItems.map(it => it.productId).filter(Boolean)));
+    const products = await tx.product.findMany({
+      where: { id: { in: productIds } }
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    // Aggregate requested quantities per product to validate and decrement stock atomically
+    const requestedQtyPerProduct = new Map();
     for (const item of orderItems) {
-      const product = await tx.product.findUnique({ where: { id: item.productId } });
+      const qty = Number(item.quantity) || 1;
+      requestedQtyPerProduct.set(item.productId, (requestedQtyPerProduct.get(item.productId) || 0) + qty);
+    }
+
+    for (const item of orderItems) {
+      const product = productMap.get(item.productId);
       if (!product) {
         throw new Error(`Product ${item.name || item.productId} not found`);
       }
 
-      // Check if product is in stock via the boolean flag
-      if (!product.inStock) {
-        throw new Error(`"${product.name}" is currently Out of Stock.`);
+      // Check stock sufficiency
+      const totalRequested = requestedQtyPerProduct.get(item.productId) || item.quantity;
+      if (!product.inStock || (product.stock !== null && product.stock !== undefined && product.stock < totalRequested)) {
+        throw new Error(`"${product.name}" does not have sufficient stock available.`);
       }
 
       const unitPrice = product.price;
@@ -979,6 +1002,22 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
         category: product.category,
         quantity: item.quantity
       });
+    }
+
+    // Atomically decrement stock for all purchased products inside transaction
+    for (const [productId, qtyToDecrement] of requestedQtyPerProduct.entries()) {
+      const prod = productMap.get(productId);
+      if (prod) {
+        const currentStock = prod.stock ?? 0;
+        const newStock = Math.max(0, currentStock - qtyToDecrement);
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            stock: newStock,
+            inStock: newStock > 0
+          }
+        });
+      }
     }
 
     // Authoritative Coupon Validation
@@ -1105,8 +1144,9 @@ export const createCheckoutOrder = async (orderItems, shippingAddress, paymentMe
 
 /**
  * Retrieves orders filtered by role (ADMIN sees all; MANUFACTURER sees assigned + unassigned).
+ * Supports optional pagination (?page=1&limit=20) with selective Prisma projections.
  */
-export const getOrdersForUser = async (user) => {
+export const getOrdersForUser = async (user, options = {}) => {
   const userRole = (user?.role || '').toUpperCase();
   const whereClause = {};
 
@@ -1119,12 +1159,40 @@ export const getOrdersForUser = async (user) => {
     whereClause.userId = user.id;
   }
 
-  const orders = await prisma.order.findMany({
+  const hasPagination = options.page !== undefined || options.limit !== undefined;
+  const page = Math.max(1, parseInt(options.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(options.limit, 10) || 20));
+  const skip = (page - 1) * limit;
+
+  const queryArgs = {
     where: whereClause,
     include: {
       items: {
-        include: {
-          product: true
+        select: {
+          id: true,
+          orderId: true,
+          productId: true,
+          name: true,
+          size: true,
+          color: true,
+          quantity: true,
+          price: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              manufactureName: true,
+              price: true,
+              manufacturePrice: true,
+              coverPhoto: true,
+              category: true,
+              inStock: true,
+              stock: true,
+              priceBreakdown: true,
+              manufactureSpec: true,
+              colors: true
+            }
+          }
         }
       },
       user: {
@@ -1146,9 +1214,32 @@ export const getOrdersForUser = async (user) => {
       }
     },
     orderBy: { createdAt: 'desc' }
-  });
+  };
 
-  return orders.map(formatOrderForUi);
+  if (hasPagination) {
+    queryArgs.skip = skip;
+    queryArgs.take = limit;
+  }
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany(queryArgs),
+    hasPagination ? prisma.order.count({ where: whereClause }) : Promise.resolve(null)
+  ]);
+
+  const formattedOrders = orders.map(o => formatOrderForUi(o, false));
+
+  if (hasPagination) {
+    return {
+      orders: formattedOrders,
+      count: formattedOrders.length,
+      total: total ?? formattedOrders.length,
+      page,
+      limit,
+      totalPages: Math.ceil((total ?? formattedOrders.length) / limit)
+    };
+  }
+
+  return formattedOrders;
 };
 
 /**
@@ -1274,19 +1365,29 @@ export const cancelOrder = async (id, cancelReason, actor = { role: 'ADMIN', id:
       return formatOrderForUi(updated);
     }
 
-    // Replenish stock for all items
+    // Replenish stock for all items without N+1 queries
     if (Array.isArray(existing.items)) {
+      const replenishMap = new Map();
       for (const item of existing.items) {
         if (item.productId && item.quantity > 0) {
-          const productExists = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: { id: true }
-          });
-          if (productExists) {
+          replenishMap.set(item.productId, (replenishMap.get(item.productId) || 0) + item.quantity);
+        }
+      }
+
+      if (replenishMap.size > 0) {
+        const productIds = Array.from(replenishMap.keys());
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true }
+        });
+        const validProductIds = new Set(products.map(p => p.id));
+
+        for (const [productId, incrementQty] of replenishMap.entries()) {
+          if (validProductIds.has(productId)) {
             await tx.product.update({
-              where: { id: item.productId },
+              where: { id: productId },
               data: {
-                stock: { increment: item.quantity },
+                stock: { increment: incrementQty },
                 inStock: true
               }
             });
@@ -1439,18 +1540,29 @@ export const handleCancellationResponse = async (id, action, actor = { role: 'AD
     }
 
     if (isAccepted) {
+      // Replenish stock for all items without N+1 queries
       if (Array.isArray(existing.items)) {
+        const replenishMap = new Map();
         for (const item of existing.items) {
           if (item.productId && item.quantity > 0) {
-            const productExists = await tx.product.findUnique({
-              where: { id: item.productId },
-              select: { id: true }
-            });
-            if (productExists) {
+            replenishMap.set(item.productId, (replenishMap.get(item.productId) || 0) + item.quantity);
+          }
+        }
+
+        if (replenishMap.size > 0) {
+          const productIds = Array.from(replenishMap.keys());
+          const products = await tx.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true }
+          });
+          const validProductIds = new Set(products.map(p => p.id));
+
+          for (const [productId, incrementQty] of replenishMap.entries()) {
+            if (validProductIds.has(productId)) {
               await tx.product.update({
-                where: { id: item.productId },
+                where: { id: productId },
                 data: {
-                  stock: { increment: item.quantity },
+                  stock: { increment: incrementQty },
                   inStock: true
                 }
               });
@@ -1585,5 +1697,5 @@ export const getOrderById = async (id) => {
   });
 
   if (!order) return null;
-  return formatOrderForUi(order);
+  return formatOrderForUi(order, true);
 };

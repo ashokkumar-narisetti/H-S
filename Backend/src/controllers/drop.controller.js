@@ -5,31 +5,23 @@ import { prisma } from '../lib/prisma.js';
 // @access  Public
 export const getCatalogSummary = async (req, res) => {
   try {
-    const totalDrops = await prisma.drop.count();
-    const allProducts = await prisma.product.findMany({
-      include: {
-        drop: {
-          select: { status: true, isActive: true }
+    const [totalDrops, totalProducts, liveProducts] = await Promise.all([
+      prisma.drop.count(),
+      prisma.product.count(),
+      prisma.product.count({
+        where: {
+          inStock: true,
+          drop: {
+            OR: [
+              { status: { equals: 'Live', mode: 'insensitive' } },
+              { isActive: true }
+            ]
+          }
         }
-      }
-    });
+      })
+    ]);
 
-    const totalProducts = allProducts.length;
-
-    let liveProducts = 0;
-    let draftProducts = 0;
-
-    for (const p of allProducts) {
-      const dropStatus = p.drop?.status;
-      const isDropLive = dropStatus === 'Live' || p.drop?.isActive === true;
-
-      // A product is ONLY Live if its parent Drop is Live AND product is inStock
-      if (isDropLive && p.inStock) {
-        liveProducts++;
-      } else {
-        draftProducts++;
-      }
-    }
+    const draftProducts = Math.max(0, totalProducts - liveProducts);
 
     res.json({
       totalDrops,
@@ -51,7 +43,29 @@ export const getDrops = async (req, res) => {
     const drops = await prisma.drop.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        products: true,
+        products: {
+          select: {
+            id: true,
+            name: true,
+            manufactureName: true,
+            coverPhoto: true,
+            price: true,
+            userPrice: true,
+            manufacturePrice: true,
+            category: true,
+            gender: true,
+            fit: true,
+            isNew: true,
+            isBestSeller: true,
+            stock: true,
+            inStock: true,
+            sizes: true,
+            colors: true,
+            dropId: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
       },
     });
 
@@ -61,7 +75,30 @@ export const getDrops = async (req, res) => {
       title: d.title || d.dropName || 'Untitled Drop',
       status: d.status || (d.isActive ? 'Live' : 'Draft'),
       createdAt: d.createdAt ? d.createdAt.toISOString() : new Date().toISOString(),
-      updatedAt: d.updatedAt ? d.updatedAt.toISOString() : new Date().toISOString()
+      updatedAt: d.updatedAt ? d.updatedAt.toISOString() : new Date().toISOString(),
+      products: (d.products || []).map(p => {
+        const sanitizedColors = Array.isArray(p.colors)
+          ? p.colors.map(c => {
+              if (!c || typeof c !== 'object') return c;
+              return {
+                name: c.name || '',
+                code: c.code || null,
+                userPrice: c.userPrice ?? c.sellingPrice ?? null,
+                sellingPrice: c.sellingPrice ?? c.userPrice ?? null,
+                manufacturePrice: c.manufacturePrice ?? null,
+                frontView: c.frontView || c.image || null,
+                backView: c.backView || null,
+                mockup: c.mockup || null
+              };
+            })
+          : p.colors;
+
+        return {
+          ...p,
+          images: p.coverPhoto ? [p.coverPhoto] : [],
+          colors: sanitizedColors
+        };
+      })
     }));
 
     res.json(formattedDrops);

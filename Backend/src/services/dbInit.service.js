@@ -1,10 +1,14 @@
 import { prisma } from '../lib/prisma.js';
 
 let initialized = false;
+let initPromise = null;
 
 export const initCustomTables = async () => {
   if (initialized) return;
-  try {
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
     // 1. Initialize Coupon table in PostgreSQL
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Coupon" (
@@ -138,9 +142,30 @@ export const initCustomTables = async () => {
       );
     }
 
+    // 7. Ensure Performance Indexes exist in PostgreSQL
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "OrderItem_orderId_idx" ON "OrderItem"("orderId");
+      CREATE INDEX IF NOT EXISTS "OrderItem_productId_idx" ON "OrderItem"("productId");
+      CREATE INDEX IF NOT EXISTS "Address_userId_idx" ON "Address"("userId");
+      CREATE INDEX IF NOT EXISTS "Product_categoryId_idx" ON "Product"("categoryId");
+      CREATE INDEX IF NOT EXISTS "Product_inStock_createdAt_idx" ON "Product"("inStock", "createdAt");
+      CREATE INDEX IF NOT EXISTS "Drop_isActive_status_idx" ON "Drop"("isActive", "status");
+      CREATE INDEX IF NOT EXISTS "Review_productId_idx" ON "Review"("productId");
+      CREATE INDEX IF NOT EXISTS "Review_userId_idx" ON "Review"("userId");
+      CREATE INDEX IF NOT EXISTS "User_role_idx" ON "User"("role");
+      CREATE INDEX IF NOT EXISTS "CartItem_cartId_idx" ON "CartItem"("cartId");
+      CREATE INDEX IF NOT EXISTS "CartItem_productId_idx" ON "CartItem"("productId");
+    `);
+
     initialized = true;
-    console.log('✓ PostgreSQL Custom Database Tables (Category, Coupon, Setting) initialized successfully');
+    console.log('✓ PostgreSQL Custom Database Tables & Performance Indexes initialized successfully');
   } catch (err) {
     console.error('Warning initializing custom tables:', err.message);
+  } finally {
+    initPromise = null;
   }
+  })();
+
+  return initPromise;
 };
+

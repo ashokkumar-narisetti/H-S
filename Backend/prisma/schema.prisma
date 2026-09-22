@@ -48,6 +48,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([role])
 }
 
 model Address {
@@ -60,6 +62,8 @@ model Address {
   zipCode   String
   country   String
   isDefault Boolean @default(false)
+
+  @@index([userId])
 }
 
 // -----------------------------------------------------------------------
@@ -109,6 +113,8 @@ model Product {
   @@index([category])
   @@index([dropId])
   @@index([manufacturerId])
+  @@index([categoryId])
+  @@index([inStock, createdAt])
 }
 
 model Drop {
@@ -121,6 +127,8 @@ model Drop {
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([isActive, status])
 }
 
 model Review {
@@ -132,6 +140,9 @@ model Review {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
 }
 
 // -----------------------------------------------------------------------
@@ -154,6 +165,9 @@ model CartItem {
   size      String
   color     String?
   quantity  Int
+
+  @@index([cartId])
+  @@index([productId])
 }
 
 // -----------------------------------------------------------------------
@@ -228,6 +242,9 @@ model OrderItem {
   color     String?
   quantity  Int
   price     Float // Price frozen at checkout
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 enum paymentStatus{

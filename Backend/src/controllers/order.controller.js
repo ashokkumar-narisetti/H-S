@@ -1,4 +1,5 @@
 import * as orderService from '../services/order.service.js';
+import { prisma } from '../lib/prisma.js';
 
 // @desc    Create new order (supports direct Admin/Staff order creation & customer checkout)
 // @route   POST /api/orders, POST /api/orders/checkout
@@ -75,12 +76,28 @@ export const createOrder = async (req, res) => {
 // @access  Private (Admin / Manufacturer)
 export const getAllOrders = async (req, res) => {
   try {
-    const formattedOrders = await orderService.getOrdersForUser(req.user);
+    const hasPage = req.query.page !== undefined;
+    const hasLimit = req.query.limit !== undefined;
+    const page = hasPage ? Math.max(1, parseInt(req.query.page, 10) || 1) : (hasLimit ? 1 : undefined);
+    const limit = (hasPage || hasLimit) ? Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20)) : undefined;
+
+    const result = await orderService.getOrdersForUser(req.user, { page, limit });
+
+    const formattedOrders = Array.isArray(result) ? result : result.orders;
+    const count = formattedOrders.length;
+    const total = result.total ?? count;
+    const currentPage = result.page ?? 1;
+    const currentLimit = result.limit ?? count;
+    const totalPages = result.totalPages ?? 1;
 
     return res.status(200).json({
       success: true,
       message: 'Orders retrieved successfully',
-      count: formattedOrders.length,
+      count,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages,
       data: formattedOrders,
       orders: formattedOrders
     });
@@ -102,6 +119,7 @@ export const shipOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { shipperName, trackingId, trackingLink } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
 
     if (!id) {
       return res.status(400).json({
@@ -109,6 +127,35 @@ export const shipOrder = async (req, res) => {
         message: 'Order ID is required',
         data: null,
         errors: ['Missing order ID']
+      });
+    }
+
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR' && userRole !== 'MANUFACTURER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not authorized to ship orders',
+        data: null
+      });
+    }
+
+    const currentOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { id: true, manufacturerId: true }
+    });
+
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+        data: null
+      });
+    }
+
+    if (userRole === 'MANUFACTURER' && currentOrder.manufacturerId && currentOrder.manufacturerId !== req.user?.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot ship an order assigned to another manufacturer',
+        data: null
       });
     }
 
@@ -142,6 +189,7 @@ export const completeOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { completedDate } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
 
     if (!id) {
       return res.status(400).json({
@@ -149,6 +197,35 @@ export const completeOrder = async (req, res) => {
         message: 'Order ID is required',
         data: null,
         errors: ['Missing order ID']
+      });
+    }
+
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR' && userRole !== 'MANUFACTURER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not authorized to complete orders',
+        data: null
+      });
+    }
+
+    const currentOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { id: true, manufacturerId: true }
+    });
+
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+        data: null
+      });
+    }
+
+    if (userRole === 'MANUFACTURER' && currentOrder.manufacturerId && currentOrder.manufacturerId !== req.user?.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot complete an order assigned to another manufacturer',
+        data: null
       });
     }
 
@@ -173,11 +250,12 @@ export const completeOrder = async (req, res) => {
 
 // @desc    Cancel order directly with reason
 // @route   PATCH /api/orders/:id/cancel
-// @access  Private (Admin / Manufacturer)
+// @access  Private (Admin / Manufacturer / User owner)
 export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
     const { cancelReason } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
 
     if (!id) {
       return res.status(400).json({
@@ -188,8 +266,37 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
+    const currentOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { id: true, userId: true, manufacturerId: true }
+    });
+
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+        data: null
+      });
+    }
+
+    if (userRole === 'USER' && currentOrder.userId !== req.user?.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot cancel an order that does not belong to you',
+        data: null
+      });
+    }
+
+    if (userRole === 'MANUFACTURER' && currentOrder.manufacturerId && currentOrder.manufacturerId !== req.user?.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot cancel an order assigned to another manufacturer',
+        data: null
+      });
+    }
+
     const updated = await orderService.cancelOrder(id, cancelReason, {
-      role: req.user?.role || 'ADMIN',
+      role: userRole || 'ADMIN',
       id: req.user?.id || null
     });
 
@@ -257,6 +364,15 @@ export const respondToPriceAdjustment = async (req, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
+
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can respond to price adjustment requests',
+        data: null
+      });
+    }
 
     if (!id) {
       return res.status(400).json({
@@ -302,6 +418,7 @@ export const requestOrderCancellation = async (req, res) => {
   try {
     const { id } = req.params;
     const { cancelReason } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
 
     if (!id) {
       return res.status(400).json({
@@ -312,6 +429,27 @@ export const requestOrderCancellation = async (req, res) => {
       });
     }
 
+    const currentOrder = await prisma.order.findUnique({
+      where: { id },
+      select: { id: true, manufacturerId: true }
+    });
+
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+        data: null
+      });
+    }
+
+    if (userRole === 'MANUFACTURER' && currentOrder.manufacturerId && currentOrder.manufacturerId !== req.user?.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot request cancellation for an order assigned to another manufacturer',
+        data: null
+      });
+    }
+
     const updated = await orderService.requestOrderCancellation(id, cancelReason, {
       role: req.user?.role || 'MANUFACTURER',
       id: req.user?.id || null
@@ -319,7 +457,7 @@ export const requestOrderCancellation = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Cancellation request submitted to Admin',
+      message: 'Cancellation request submitted',
       data: updated,
       order: updated
     });
@@ -341,6 +479,15 @@ export const respondToCancelRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
+
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can respond to cancellation requests',
+        data: null
+      });
+    }
 
     if (!id) {
       return res.status(400).json({
@@ -389,6 +536,15 @@ export const updateMfgPaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { mfgPaymentStatus, mfgPaidDate } = req.body;
+    const userRole = (req.user?.role || '').toUpperCase();
+
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can update manufacturer payment status',
+        data: null
+      });
+    }
 
     if (!id) {
       return res.status(400).json({

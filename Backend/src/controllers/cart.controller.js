@@ -1,16 +1,42 @@
 import { prisma } from '../lib/prisma.js';
 
-// Helper to get or create a cart for a user
+// Selective projection for products in cart items to eliminate huge Base64 payloads
+const CART_PRODUCT_SELECT = {
+  id: true,
+  name: true,
+  price: true,
+  coverPhoto: true,
+  stock: true,
+  inStock: true
+};
+
+// Helper to get or create a cart for a user with lean product projection
 const getOrCreateCart = async (userId) => {
   let cart = await prisma.cart.findUnique({
     where: { userId },
-    include: { items: { include: { product: true } } }
+    include: {
+      items: {
+        include: {
+          product: {
+            select: CART_PRODUCT_SELECT
+          }
+        }
+      }
+    }
   });
 
   if (!cart) {
     cart = await prisma.cart.create({
       data: { userId },
-      include: { items: { include: { product: true } } }
+      include: {
+        items: {
+          include: {
+            product: {
+              select: CART_PRODUCT_SELECT
+            }
+          }
+        }
+      }
     });
   }
   return cart;
@@ -36,25 +62,45 @@ export const addToCart = async (req, res) => {
   try {
     const { productId, size, color, quantity } = req.body;
     
-    // Ensure product exists
-    const product = await prisma.product.findUnique({ where: { id: productId } });
+    // Ensure product exists with lightweight scalar read
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, stock: true, inStock: true }
+    });
     if (!product) return res.status(404).json({ message: 'Product not found' });
+    if (!product.inStock || (product.stock !== undefined && product.stock <= 0)) {
+      return res.status(400).json({ message: 'Product is out of stock' });
+    }
 
-    const cart = await getOrCreateCart(req.user.id);
+    // Lightweight cart check without loading heavy product objects
+    let cart = await prisma.cart.findUnique({
+      where: { userId: req.user.id },
+      select: {
+        id: true,
+        items: {
+          select: { id: true, productId: true, size: true, color: true, quantity: true }
+        }
+      }
+    });
+
+    if (!cart) {
+      cart = await prisma.cart.create({
+        data: { userId: req.user.id },
+        select: { id: true, items: true }
+      });
+    }
 
     // Check if item already exists in cart with same size/color
-    const existingItem = cart.items.find(
+    const existingItem = (cart.items || []).find(
       (item) => item.productId === productId && item.size === size && item.color === color
     );
 
     if (existingItem) {
-      // Update quantity
       await prisma.cartItem.update({
         where: { id: existingItem.id },
         data: { quantity: existingItem.quantity + quantity }
       });
     } else {
-      // Add new item
       await prisma.cartItem.create({
         data: {
           cartId: cart.id,
@@ -66,7 +112,7 @@ export const addToCart = async (req, res) => {
       });
     }
 
-    // Fetch and return updated cart
+    // Return fresh updated cart with lean projection
     const updatedCart = await getOrCreateCart(req.user.id);
     res.status(201).json(updatedCart);
   } catch (error) {
@@ -83,13 +129,16 @@ export const updateCartItem = async (req, res) => {
     const { quantity } = req.body;
     const { itemId } = req.params;
 
-    // Verify item belongs to user's cart
+    // Verify item belongs to user's cart without loading full objects
     const cartItem = await prisma.cartItem.findUnique({
       where: { id: itemId },
-      include: { cart: true }
+      select: {
+        id: true,
+        cart: { select: { userId: true } }
+      }
     });
 
-    if (!cartItem || cartItem.cart.userId !== req.user.id) {
+    if (!cartItem || cartItem.cart?.userId !== req.user.id) {
       return res.status(404).json({ message: 'Cart item not found' });
     }
 
@@ -115,10 +164,13 @@ export const removeCartItem = async (req, res) => {
 
     const cartItem = await prisma.cartItem.findUnique({
       where: { id: itemId },
-      include: { cart: true }
+      select: {
+        id: true,
+        cart: { select: { userId: true } }
+      }
     });
 
-    if (!cartItem || cartItem.cart.userId !== req.user.id) {
+    if (!cartItem || cartItem.cart?.userId !== req.user.id) {
       return res.status(404).json({ message: 'Cart item not found' });
     }
 
@@ -139,7 +191,10 @@ export const removeCartItem = async (req, res) => {
 // @access  Private
 export const clearCart = async (req, res) => {
   try {
-    const cart = await prisma.cart.findUnique({ where: { userId: req.user.id } });
+    const cart = await prisma.cart.findUnique({
+      where: { userId: req.user.id },
+      select: { id: true }
+    });
     if (cart) {
       await prisma.cartItem.deleteMany({
         where: { cartId: cart.id }

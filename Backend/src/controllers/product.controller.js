@@ -26,13 +26,43 @@ const ensureArray = (val) => {
   return val ? [val] : [];
 };
 
-// @desc    Get all products with filters
+// Helper to sanitize color variant for catalog list responses (exclude heavy Base64 modelPhotos & designFile)
+const sanitizeColorForList = (color) => {
+  if (!color || typeof color !== 'object') return color;
+  return {
+    name: color.name || '',
+    code: color.code || null,
+    userPrice: color.userPrice ?? color.sellingPrice ?? null,
+    sellingPrice: color.sellingPrice ?? color.userPrice ?? null,
+    manufacturePrice: color.manufacturePrice ?? null,
+    baseCost: color.baseCost ?? 0,
+    printingCost: color.printingCost ?? 0,
+    shippingCost: color.shippingCost ?? 0,
+    additionalCost: color.additionalCost ?? 0,
+    printType: color.printType || null,
+    printPosition: color.printPosition || null,
+    printSpecs: color.printSpecs || null,
+    frontView: color.frontView || color.image || null,
+    backView: color.backView || null,
+    mockup: color.mockup || null
+  };
+};
+
+// @desc    Get all products with filters & pagination
 // @route   GET /api/products or /api/catalogue/products
 // @access  Public
 export const getProducts = async (req, res) => {
   try {
-    const { category, isBestSeller, dropId, inStock } = req.query;
-    
+    const { category, isBestSeller, dropId, inStock, page: pageQuery, limit: limitQuery } = req.query;
+
+    const hasPage = pageQuery !== undefined;
+    const hasLimit = limitQuery !== undefined;
+    const isPaginated = hasPage || hasLimit || req.query.paginate === 'true';
+
+    const page = Math.max(1, parseInt(pageQuery, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(limitQuery, 10) || 20));
+    const skip = (page - 1) * limit;
+
     // Build filter dynamically
     const filter = {};
     if (category && category !== 'All Categories') filter.category = { equals: category, mode: 'insensitive' };
@@ -51,7 +81,7 @@ export const getProducts = async (req, res) => {
       ];
     }
 
-    const products = await prisma.product.findMany({
+    const queryArgs = {
       where: filter,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -61,7 +91,7 @@ export const getProducts = async (req, res) => {
         description: true,
         price: true,
         userPrice: true,
-        images: true,
+        manufacturePrice: true,
         coverPhoto: true,
         category: true,
         gender: true,
@@ -77,12 +107,48 @@ export const getProducts = async (req, res) => {
         createdAt: true,
         updatedAt: true
       }
+    };
+
+    if (isPaginated) {
+      queryArgs.skip = skip;
+      queryArgs.take = limit;
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany(queryArgs),
+      isPaginated ? prisma.product.count({ where: filter }) : Promise.resolve(null)
+    ]);
+
+    // Format lightweight products list: sanitize colors and prune duplicate Base64 arrays
+    const formattedProducts = products.map(p => {
+      const sanitizedColors = Array.isArray(p.colors)
+        ? p.colors.map(sanitizeColorForList)
+        : p.colors;
+
+      return {
+        ...p,
+        images: p.coverPhoto ? [p.coverPhoto] : [],
+        colors: sanitizedColors
+      };
     });
 
-    res.json(products);
+    if (isPaginated) {
+      return res.json({
+        success: true,
+        count: formattedProducts.length,
+        total: total ?? formattedProducts.length,
+        page,
+        limit,
+        totalPages: Math.ceil((total ?? formattedProducts.length) / limit),
+        data: formattedProducts,
+        products: formattedProducts
+      });
+    }
+
+    return res.json(formattedProducts);
   } catch (error) {
     console.error('Error fetching products:', error.message);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
