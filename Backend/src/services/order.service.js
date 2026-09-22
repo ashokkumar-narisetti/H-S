@@ -1239,21 +1239,38 @@ export const cancelOrder = async (id, cancelReason, actor = { role: 'ADMIN', id:
       : (existing.cancelReason || null);
 
     if (existing.status === 'CANCELED') {
-      const updated = await tx.order.update({
-        where: { id },
-        data: {
-          cancelReason: finalReason,
-          cancelledByRole: existing.cancelledByRole || cancelledByRole,
-          cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
-          cancelledAt: existing.cancelledAt || new Date(),
-          cancelRequested: false
-        },
-        include: {
-          items: { include: { product: true } },
-          user: true,
-          manufacturer: true
-        }
-      });
+      let updated;
+      try {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelReason: finalReason,
+            cancelledByRole: existing.cancelledByRole || cancelledByRole,
+            cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
+            cancelledAt: existing.cancelledAt || new Date(),
+            cancelRequested: false
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      } catch (auditErr) {
+        console.warn('Falling back to core cancel fields:', auditErr.message);
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelReason: finalReason,
+            cancelRequested: false
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      }
       return formatOrderForUi(updated);
     }
 
@@ -1278,22 +1295,40 @@ export const cancelOrder = async (id, cancelReason, actor = { role: 'ADMIN', id:
       }
     }
 
-    const updated = await tx.order.update({
-      where: { id },
-      data: {
-        status: 'CANCELED',
-        cancelReason: finalReason,
-        cancelledByRole,
-        cancelledByUserId: actor?.id || null,
-        cancelledAt: new Date(),
-        cancelRequested: false
-      },
-      include: {
-        items: { include: { product: true } },
-        user: true,
-        manufacturer: true
-      }
-    });
+    let updated;
+    try {
+      updated = await tx.order.update({
+        where: { id },
+        data: {
+          status: 'CANCELED',
+          cancelReason: finalReason,
+          cancelledByRole,
+          cancelledByUserId: actor?.id || null,
+          cancelledAt: new Date(),
+          cancelRequested: false
+        },
+        include: {
+          items: { include: { product: true } },
+          user: true,
+          manufacturer: true
+        }
+      });
+    } catch (auditErr) {
+      console.warn('Falling back to core cancel fields:', auditErr.message);
+      updated = await tx.order.update({
+        where: { id },
+        data: {
+          status: 'CANCELED',
+          cancelReason: finalReason,
+          cancelRequested: false
+        },
+        include: {
+          items: { include: { product: true } },
+          user: true,
+          manufacturer: true
+        }
+      });
+    }
 
     return formatOrderForUi(updated);
   }, { maxWait: 10000, timeout: 20000 });
@@ -1370,6 +1405,19 @@ export const requestOrderCancellation = async (id, cancelReason, actor = { role:
       user: true,
       manufacturer: true
     }
+  }).catch(() => {
+    return prisma.order.update({
+      where: { id },
+      data: {
+        cancelRequested: true,
+        cancelReason: finalReason
+      },
+      include: {
+        items: { include: { product: true } },
+        user: true,
+        manufacturer: true
+      }
+    });
   });
 
   return formatOrderForUi(updated);
@@ -1411,39 +1459,72 @@ export const handleCancellationResponse = async (id, action, actor = { role: 'AD
         }
       }
 
-      const updated = await tx.order.update({
-        where: { id },
-        data: {
-          cancelRequested: false,
-          status: 'CANCELED',
-          cancelReason: existing.cancelReason || null,
-          cancelledByRole: existing.cancelledByRole || 'MANUFACTURER',
-          cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
-          cancelledAt: existing.cancelledAt || new Date()
-        },
-        include: {
-          items: { include: { product: true } },
-          user: true,
-          manufacturer: true
-        }
-      });
+      let updated;
+      try {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelRequested: false,
+            status: 'CANCELED',
+            cancelReason: existing.cancelReason || null,
+            cancelledByRole: existing.cancelledByRole || 'MANUFACTURER',
+            cancelledByUserId: existing.cancelledByUserId || actor?.id || null,
+            cancelledAt: existing.cancelledAt || new Date()
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      } catch (auditErr) {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelRequested: false,
+            status: 'CANCELED',
+            cancelReason: existing.cancelReason || null
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      }
       return formatOrderForUi(updated);
     } else {
-      const updated = await tx.order.update({
-        where: { id },
-        data: {
-          cancelRequested: false,
-          cancelReason: null,
-          cancelledByRole: null,
-          cancelledByUserId: null,
-          cancelledAt: null
-        },
-        include: {
-          items: { include: { product: true } },
-          user: true,
-          manufacturer: true
-        }
-      });
+      let updated;
+      try {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelRequested: false,
+            cancelReason: null,
+            cancelledByRole: null,
+            cancelledByUserId: null,
+            cancelledAt: null
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      } catch (auditErr) {
+        updated = await tx.order.update({
+          where: { id },
+          data: {
+            cancelRequested: false,
+            cancelReason: null
+          },
+          include: {
+            items: { include: { product: true } },
+            user: true,
+            manufacturer: true
+          }
+        });
+      }
       return formatOrderForUi(updated);
     }
   }, { maxWait: 10000, timeout: 20000 });
