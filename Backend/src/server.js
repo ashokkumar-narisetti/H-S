@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -27,6 +28,9 @@ const PORT = process.env.PORT || 5000;
 
 // Trust the proxy (Render, Vercel, Heroku) so Express correctly identifies HTTPS connections and allows secure cookies
 app.set('trust proxy', 1);
+
+// HTTP Response Compression (Gzip / Deflate) to drastically reduce transfer size and speed up API responses
+app.use(compression());
 
 // Middlewares - 25mb safe limit for image payloads
 app.use(express.json({ limit: '25mb' }));

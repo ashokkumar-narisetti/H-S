@@ -52,9 +52,7 @@ export const getDashboardStats = async (req, res) => {
                 name: true,
                 price: true,
                 manufacturePrice: true,
-                colors: true,
-                category: true,
-                coverPhoto: true
+                colors: true
               }
             }
           }
